@@ -1,0 +1,47 @@
+name: "Build Action"
+description: "A composite action to build the project using SCons internal caching."
+inputs:
+  build_platform:
+    description: "The target platform for the build (e.g., linux, windows, macos, ios)"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Restore SCons cache directory
+      id: restore
+      uses: actions/cache@v4
+      with:
+        path: .scons-cache
+        key: ${{ runner.os }}-scons-cache-${{ hashFiles('**/*') }}
+        restore-keys: |
+          ${{ runner.os }}-scons-cache-
+
+    - name: Install build dependencies
+      run: |
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y scons g++ zip mingw-w64 zip
+        else
+          echo "Assuming macOS defaults"
+          brew install scons
+        fi
+      shell: bash
+
+    - name: Run SCons build for ${{ inputs.build_platform }}
+      env:
+        SCONS_CACHE_DIR: .scons-cache
+      run: scons platform=${{ inputs.build_platform }}
+      shell: bash
+
+    - name: Save SCons cache directory
+      id: cache
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache@v4
+      with:
+        path: .scons-cache
+        key: ${{ runner.os }}-scons-cache-${{ hashFiles('**/*') }}

@@ -1,0 +1,41 @@
+name: Build on Commit
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: List .github tree after checkout
+        run: tree .github
+      - name: Build for Linux
+        uses: ./.github/actions/build
+        with:
+          build_platform: linux
+
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build for Windows
+        uses: ./.github/actions/build
+        with:
+          build_platform: windows
+
+  # If you need to build for macOS (or iOS), you could add another job:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build for macOS
+        uses: ./.github/actions/build
+        with:
+          build_platform: macos
