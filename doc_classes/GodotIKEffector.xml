@@ -10,7 +10,7 @@
 		It must sit somewhere below a [GodotIK] node in the scene tree to function. Nesting is supported.
 
 		By setting the chain length and leaf behavior, you can fine-tune the balance between preserving existing transforms and applying full IK corrections.
-		Additionally, [GodotIKConstraint]s are supported, which are child nodes to [GodotIKEffector]s. 
+		Additionally, [GodotIKConstraint]s are supported, which are child nodes to [GodotIKEffector]s.
 	</description>
 	<tutorials>
 	</tutorials>

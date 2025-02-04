@@ -42,6 +42,14 @@
 			Specifies the index of the bone in the skeleton where the constraint should be applied.
 		</member>
 	</members>
+	<signals>
+		<signal name="bone_idx_changed">
+			<param index="0" name="bone_idx" type="int" />
+			<description>
+			Fired, when [member GodotIKConstraint.bone_idx] changes.
+			</description>
+		</signal>
+	</signals>
 	<constants>
 		<constant name="BACKWARD" value="-1" enum="Dir">
 			Indicates that the constraint is applied in the backward pass (from leaf to root) along the IK chain, typically giving greater influence to bones higher in the chain.
