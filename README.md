@@ -1,6 +1,6 @@
 # GodotIK
 
-## 3D Inverse Kinematics for Godot
+## 3D Inverse Kinematics for Godot 4.3+
 
 > I needed IK. People said IK was hard. I did it anyway.
 
