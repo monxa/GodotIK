@@ -54,14 +54,18 @@ void GodotIK::_process_modification() {
 	float t1 = Time::get_singleton()->get_ticks_usec();
 
 	// Initialize positions with base
-	initial_transforms.resize(skeleton->get_bone_count());
-	positions.resize(skeleton->get_bone_count());
+	identity_idx = skeleton->get_bone_count();
+	initial_transforms.resize(identity_idx + 1); // +1 for identity index
+
 	for (int i = 0; i < skeleton->get_bone_count(); i++) {
 		initial_transforms.set(i, skeleton->get_bone_global_pose(i));
 	}
+	initial_transforms.set(identity_idx, Transform3D()); // buffer an identity transform
+	positions.resize(identity_idx + 1);
 	for (int i = 0; i < skeleton->get_bone_count(); i++) {
 		positions.set(i, initial_transforms[i].origin);
 	}
+	positions.set(identity_idx, Vector3());
 	if (!initialized) {
 		initialize();
 	}
@@ -149,18 +153,16 @@ void godot::GodotIK::apply_positions() {
 	int skip = 0;
 	for (int bone_idx : indices_by_depth) {
 		int parent_idx = skeleton->get_bone_parent(bone_idx);
-		if (parent_idx < 0) {
-			if (positions[bone_idx] != transforms[bone_idx].origin) {
-				print_error("IK Chain includes a root bone. This is not supported.");
-				return;
-			}
-			continue;
+		if (parent_idx < 0){
+			parent_idx = identity_idx;
 		}
+		
 		if (!needs_processing[bone_idx] && !needs_processing[parent_idx]) {
 			skip++;
 			continue;
 		}
-		const Transform3D &parent_transform = transforms[parent_idx];
+		Transform3D parent_transform;
+		parent_transform = transforms[parent_idx];
 		const Transform3D &bone_transform = transforms[bone_idx];
 
 		Vector3 old_position_bone = initial_transforms[bone_idx].origin;
@@ -350,7 +352,8 @@ void GodotIK::initialize() {
 	}
 	initialize_bone_lengths();
 	initialize_chains();
-	needs_processing.resize(skeleton->get_bone_count());
+	// + 1 for identity_idx
+	needs_processing.resize(skeleton->get_bone_count() + 1);
 	needs_processing.fill(false);
 	for (auto chain : chains) {
 		for (int bone_idx : chain.bones) {

@@ -63,9 +63,15 @@ private:
 	Vector<int> indices_by_depth;
 
 	Vector<bool> needs_processing;
-
 	Vector<Vector3> positions;
 	Vector<Transform3D> initial_transforms;
+	// identity_idx is used as an extra element (at index bone_count) to represent a "null" or identity transform.
+	// This extra element is initialized as follows:
+	//   needs_processing[identity_idx] = false
+	//   positions[identity_idx] = Vector3(0, 0, 0)   // or Vector3.ZERO if defined
+	//   initial_transforms[identity_idx] = Transform3D()  // or Transform3D.IDENTITY if defined
+	int identity_idx;
+
 	Vector<IKChain> chains;
 	Vector<Vector<int>> chain_forward_processing_order;
 
