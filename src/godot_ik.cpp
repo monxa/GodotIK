@@ -65,10 +65,13 @@ void GodotIK::_process_modification() {
 	if (!initialized) {
 		initialize();
 	}
-
 	// update effector positions
-	for (int ch = 0; ch < chains.size(); ch++) {
-		chains.write[ch].effector_position = skeleton->to_local(chains[ch].effector->get_global_position());
+	for (IKChain & chain : chains) {
+		if (!chain.effector->is_inside_tree()){
+			// ! RETURN. If any effector is outside the tree, we are not ready yet, to process any modifications.
+			return;
+		}
+		chain.effector_position = skeleton->to_local(chain.effector->get_global_position());
 	}
 
 	for (int i = 0; i < iteration_count; i++) {
