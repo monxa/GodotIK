@@ -425,12 +425,24 @@ void GodotIK::initialize_chains() {
 		return;
 	}
 
-	// Collect Effector child nodes and initialize chains
-	for (int child_index = 0; child_index < get_child_count(); child_index++) {
-		Node *child = get_child(child_index);
+	// Collect all nested effectors
+	Vector<GodotIKEffector * > effector_list;
+	Vector<Node *> child_list; // First in, first out through iteration -> BSF
+	
+	for (int i = 0; i < get_child_count(); i++){
+		child_list.push_back(get_child(i));
+	}
+	for (int i = 0; i < child_list.size(); i++){
+		Node * child = child_list[i];
+		for (int j = 0; j < child->get_child_count(); j++){
+			child_list.push_back(child->get_child(j));
+		}
+	}
+
+	// Process each child if child is effector
+	for (Node * child : child_list) {
 		GodotIKEffector *effector = Object::cast_to<GodotIKEffector>(child);
 		if (effector == nullptr) {
-			ERR_PRINT("Effector could not be converted");
 			continue;
 		}
 		IKChain new_chain;
@@ -443,7 +455,7 @@ void GodotIK::initialize_chains() {
 			bone_idx = skeleton->get_bone_parent(bone_idx);
 		}
 
-		// add constraints
+		// add constraints to current effector
 		new_chain.constraints.resize(new_chain.bones.size());
 		new_chain.constraints.fill(nullptr);
 		for (int i = 0; i < effector->get_child_count(); i++) {
