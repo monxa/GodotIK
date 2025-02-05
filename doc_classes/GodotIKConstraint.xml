@@ -29,7 +29,7 @@
 				Returns a [code]PackedVector3Array[/code] containing the positions [code][pos_parent_bone, pos_bone, pos_child_bone][/code] for the current bone index.
 
 				[b]Note:[/b]
-				- If the bone (referenced by [member GodotIKEffector.bone_id]) has no parent or child, the corresponding [param pos_parent_bone] or [param pos_child_bone] will be [code]Vector3.ZERO[/code].
+				- If the bone (referenced by [member GodotIKEffector.bone_idx]) has no parent or child, the corresponding [param pos_parent_bone] or [param pos_child_bone] will be [code]Vector3.ZERO[/code].
 				- If the bone has a parent but that parent lies outside the affected chain, the supplied [param pos_parent_bone] is used as provided; however, the first element of the returned [code]PackedVector3Array[/code] will be ignored.
 			</description>
 		</method>
