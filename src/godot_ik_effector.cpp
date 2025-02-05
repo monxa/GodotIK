@@ -12,9 +12,9 @@ void GodotIKEffector::_bind_methods() {
 	BIND_ENUM_CONSTANT(STRAIGHTEN_CHAIN);
 	BIND_ENUM_CONSTANT(FULL_TRANSFORM);
 
-	ClassDB::bind_method(D_METHOD("set_bone_id", "bone_id"), &GodotIKEffector::set_bone_id);
-	ClassDB::bind_method(D_METHOD("get_bone_id"), &GodotIKEffector::get_bone_id);
-	ADD_PROPERTY(PropertyInfo(Variant::Type::INT, "bone_id"), "set_bone_id", "get_bone_id");
+	ClassDB::bind_method(D_METHOD("set_bone_idx", "bone_idx"), &GodotIKEffector::set_bone_idx);
+	ClassDB::bind_method(D_METHOD("get_bone_idx"), &GodotIKEffector::get_bone_idx);
+	ADD_PROPERTY(PropertyInfo(Variant::Type::INT, "bone_idx"), "set_bone_idx", "get_bone_idx");
 
 	ClassDB::bind_method(D_METHOD("set_chain_length", "chain_length"), &GodotIKEffector::set_chain_length);
 	ClassDB::bind_method(D_METHOD("get_chain_length"), &GodotIKEffector::get_chain_length);
@@ -25,12 +25,12 @@ void GodotIKEffector::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "transform_mode", PROPERTY_HINT_ENUM, "Position Only, Preserve Rotation, Straighten Chain, Full Transform"), "set_leaf_behavior", "get_leaf_behavior");
 }
 
-int GodotIKEffector::get_bone_id() {
-	return bone_id;
+int GodotIKEffector::get_bone_idx() {
+	return bone_idx;
 }
 
-void GodotIKEffector::set_bone_id(int p_bone_id) {
-	bone_id = p_bone_id;
+void GodotIKEffector::set_bone_idx(int p_bone_id) {
+	bone_idx = p_bone_id;
 }
 
 int GodotIKEffector::get_chain_length() {

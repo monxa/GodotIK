@@ -35,7 +35,7 @@
 		</method>
 	</methods>
 	<members>
-		<member name="bone_id" type="int" setter="set_bone_id" getter="get_bone_id" default="0">
+		<member name="bone_idx" type="int" setter="set_bone_idx" getter="get_bone_idx" default="0">
 			Specifies the index of the bone in the skeleton where the constraint should be applied.
 		</member>
 	</members>

@@ -260,13 +260,13 @@ script = ExtResource("2_1bvp3")
 metadata/_custom_type_script = ExtResource("2_1bvp3")
 
 [node name="EffectorFL" type="GodotIKEffector" parent="wolf/ArmatureWolf/Skeleton3D/GodotIK"]
-bone_id = 3
+bone_idx = 3
 chain_length = 3
 transform = Transform3D(0.996464, 0.0839962, 0.0021044, 0.0755279, -0.88447, -0.460444, -0.0368144, 0.458974, -0.887687, -0.59416, 0.228332, -6.31295)
 top_level = true
 
 [node name="PoleBoneConstraint" type="GodotIKConstraint" parent="wolf/ArmatureWolf/Skeleton3D/GodotIK/EffectorFL"]
-bone_id = 2
+bone_idx = 2
 script = ExtResource("2_h2yge")
 active = false
 pole_direction = Vector3(0, 0, 1)
@@ -274,12 +274,12 @@ forward = false
 metadata/_custom_type_script = ExtResource("2_h2yge")
 
 [node name="EffectorFR" type="GodotIKEffector" parent="wolf/ArmatureWolf/Skeleton3D/GodotIK"]
-bone_id = 8
+bone_idx = 8
 chain_length = 3
 transform = Transform3D(0.996464, -0.0839962, -0.0021044, -0.0755279, -0.88447, -0.460444, 0.0368144, 0.458974, -0.887687, -0.17745, 0.228332, 0.335999)
 
 [node name="PoleBoneConstraint" type="GodotIKConstraint" parent="wolf/ArmatureWolf/Skeleton3D/GodotIK/EffectorFR"]
-bone_id = 7
+bone_idx = 7
 script = ExtResource("2_h2yge")
 active = false
 pole_direction = Vector3(0, 0, 1)
@@ -287,11 +287,11 @@ forward = false
 metadata/_custom_type_script = ExtResource("2_h2yge")
 
 [node name="EffectorRL" type="GodotIKEffector" parent="wolf/ArmatureWolf/Skeleton3D/GodotIK"]
-bone_id = 10
+bone_idx = 10
 transform = Transform3D(0.980905, -0.009508, 0.194254, -0.0203943, -0.998326, 0.0541186, 0.193414, -0.0570473, -0.979456, 0.191384, 0.268114, -0.742832)
 
 [node name="EffectorRR" type="GodotIKEffector" parent="wolf/ArmatureWolf/Skeleton3D/GodotIK"]
-bone_id = 12
+bone_idx = 12
 transform = Transform3D(0.980905, 0.009508, -0.194254, 0.0203943, -0.998326, 0.0541186, -0.193414, -0.0570473, -0.979456, -0.191384, 0.268114, -0.742832)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="wolf"]

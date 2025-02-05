@@ -12,7 +12,7 @@
 	<tutorials>
 	</tutorials>
 	<members>
-		<member name="bone_id" type="int" setter="set_bone_id" getter="get_bone_id" default="0">
+		<member name="bone_idx" type="int" setter="set_bone_idx" getter="get_bone_idx" default="0">
 			The index of the bone that this effector controls within the skeleton.
 		</member>
 		<member name="chain_length" type="int" setter="set_chain_length" getter="get_chain_length" default="2">

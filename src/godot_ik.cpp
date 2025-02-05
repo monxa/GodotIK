@@ -200,7 +200,7 @@ void godot::GodotIK::apply_positions() {
 		if (effector == nullptr) {
 			continue;
 		}
-		if (effector->get_bone_id() < 0 || effector->get_bone_id() >= skeleton->get_bone_count()) {
+		if (effector->get_bone_idx() < 0 || effector->get_bone_idx() >= skeleton->get_bone_count()) {
 			continue;
 		}
 
@@ -208,8 +208,8 @@ void godot::GodotIK::apply_positions() {
 		if (transform_mode == GodotIKEffector::TransformMode::POSITION_ONLY) {
 			continue;
 		}
-		int bone_idx = effector->get_bone_id();
-		int parent_idx = skeleton->get_bone_parent(effector->get_bone_id());
+		int bone_idx = effector->get_bone_idx();
+		int parent_idx = skeleton->get_bone_parent(effector->get_bone_idx());
 		Transform3D trans_bone = transforms[bone_idx];
 		Transform3D trans_skeleton = skeleton->get_global_transform();
 		Transform3D trans_effector = effector->get_global_transform();
@@ -436,11 +436,11 @@ void GodotIK::initialize_chains() {
 		IKChain new_chain;
 		new_chain.effector = effector;
 
-		int bone_id = effector->get_bone_id();
+		int bone_idx = effector->get_bone_idx();
 
-		for (int chain_step = 0; chain_step < effector->get_chain_length() && bone_id >= 0; chain_step++) {
-			new_chain.bones.push_back(bone_id);
-			bone_id = skeleton->get_bone_parent(bone_id);
+		for (int chain_step = 0; chain_step < effector->get_chain_length() && bone_idx >= 0; chain_step++) {
+			new_chain.bones.push_back(bone_idx);
+			bone_idx = skeleton->get_bone_parent(bone_idx);
 		}
 
 		// add constraints
@@ -452,13 +452,13 @@ void GodotIK::initialize_chains() {
 				GodotIKConstraint *constraint = Object::cast_to<GodotIKConstraint>(child);
 				int placement_in_chain = -1;
 				for (int idx_chain = 0; idx_chain < new_chain.bones.size(); idx_chain++) {
-					if (new_chain.bones[idx_chain] == constraint->get_bone_id()) {
+					if (new_chain.bones[idx_chain] == constraint->get_bone_idx()) {
 						placement_in_chain = idx_chain;
 						break;
 					}
 				}
 				if (placement_in_chain == -1) {
-					UtilityFunctions::push_error("Constraint: ", constraint->get_name(), "with bone_id: ", bone_id, " not in parent effectors chain.");
+					UtilityFunctions::push_error("Constraint: ", constraint->get_name(), "with bone_idx: ", bone_idx, " not in parent effectors chain.");
 					continue;
 				}
 				new_chain.constraints.write[placement_in_chain] = constraint;

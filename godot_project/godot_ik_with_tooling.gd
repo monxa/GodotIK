@@ -6,5 +6,5 @@ class_name GodotIKWithTooling extends GodotIK
 	skeleton.reset_bone_poses()
 
 	for effector : GodotIKEffector in get_children():
-		var trans = skeleton.global_transform * skeleton.get_bone_global_pose(effector.bone_id)
+		var trans = skeleton.global_transform * skeleton.get_bone_global_pose(effector.bone_idx)
 		effector.global_transform = trans

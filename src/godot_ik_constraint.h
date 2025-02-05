@@ -16,8 +16,8 @@ public:
 		FORWARD = 1
 	};
 	virtual PackedVector3Array apply(Vector3 p_parent_bone_pos, Vector3 p_bone_pos, Vector3 p_child_bone_pos, int direction);
-	int get_bone_id();
-	void set_bone_id(int p_bone_id);
+	int get_bone_idx();
+	void set_bone_idx(int p_bone_id);
 
 protected:
 	static void _bind_methods();
@@ -25,7 +25,7 @@ protected:
 	bool apply_method_implemented = false;
 
 private:
-	int bone_id;
+	int bone_idx;
 }; // ! class GodotIKConstraint
 } //namespace godot
 

@@ -17,19 +17,19 @@ PackedVector3Array GodotIKConstraint::apply(Vector3 p_pos_parent_bone, Vector3 p
 	return result;
 }
 
-int godot::GodotIKConstraint::get_bone_id() {
-	return bone_id;
+int godot::GodotIKConstraint::get_bone_idx() {
+	return bone_idx;
 }
 
-void godot::GodotIKConstraint::set_bone_id(int p_bone_id) {
-	bone_id = p_bone_id;
+void godot::GodotIKConstraint::set_bone_idx(int p_bone_id) {
+	bone_idx = p_bone_id;
 }
 
 void godot::GodotIKConstraint::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_bone_id"), &GodotIKConstraint::get_bone_id);
-	ClassDB::bind_method(D_METHOD("set_bone_id", "bone_id"), &GodotIKConstraint::set_bone_id);
+	ClassDB::bind_method(D_METHOD("get_bone_idx"), &GodotIKConstraint::get_bone_idx);
+	ClassDB::bind_method(D_METHOD("set_bone_idx", "bone_idx"), &GodotIKConstraint::set_bone_idx);
 	GDVIRTUAL_BIND(apply, "pos_parent_bone", "pos_bone", "pos_child_bone", "chain_direction");
-	ADD_PROPERTY(PropertyInfo(Variant::Type::INT, "bone_id"), "set_bone_id", "get_bone_id");
+	ADD_PROPERTY(PropertyInfo(Variant::Type::INT, "bone_idx"), "set_bone_idx", "get_bone_idx");
 	BIND_ENUM_CONSTANT(BACKWARD);
 	BIND_ENUM_CONSTANT(FORWARD);
 }
