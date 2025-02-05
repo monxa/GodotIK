@@ -33,5 +33,5 @@ void godot::GodotIKConstraint::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::Type::INT, "bone_idx"), "set_bone_idx", "get_bone_idx");
 	BIND_ENUM_CONSTANT(BACKWARD);
 	BIND_ENUM_CONSTANT(FORWARD);
-	ADD_SIGNAL(MethodInfo("bone_idx_changed", "bone_idx"));
+	ADD_SIGNAL(MethodInfo("bone_idx_changed", PropertyInfo(Variant::Type::INT, "bone_idx")));
 }
