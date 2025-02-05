@@ -432,21 +432,21 @@ void GodotIK::initialize_chains() {
 	}
 
 	// Collect all nested effectors
-	Vector<GodotIKEffector * > effector_list;
+	Vector<GodotIKEffector *> effector_list;
 	Vector<Node *> child_list; // First in, first out through iteration -> BSF
-	
-	for (int i = 0; i < get_child_count(); i++){
+
+	for (int i = 0; i < get_child_count(); i++) {
 		child_list.push_back(get_child(i));
 	}
-	for (int i = 0; i < child_list.size(); i++){
-		Node * child = child_list[i];
-		for (int j = 0; j < child->get_child_count(); j++){
+	for (int i = 0; i < child_list.size(); i++) {
+		Node *child = child_list[i];
+		for (int j = 0; j < child->get_child_count(); j++) {
 			child_list.push_back(child->get_child(j));
 		}
 	}
 
 	// Process each child if child is effector
-	for (Node * child : child_list) {
+	for (Node *child : child_list) {
 		GodotIKEffector *effector = Object::cast_to<GodotIKEffector>(child);
 		if (effector == nullptr) {
 			continue;
