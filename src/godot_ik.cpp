@@ -241,12 +241,9 @@ void godot::GodotIK::apply_positions() {
 				if (parent_idx == -1) {
 					continue;
 				}
-				Vector3 old_forward = -trans_bone.basis[2];
-				Vector3 new_forward = trans_parent.origin.direction_to(trans_bone.origin);
-
-				Quaternion rotation_adjustment = Quaternion(old_forward, new_forward);
-				trans_bone.basis = rotation_adjustment * trans_bone.basis;
 				Transform3D local_trans_bone = trans_parent.affine_inverse() * trans_bone;
+				Vector3 prev_basis_scale = local_trans_bone.basis.get_scale();
+				local_trans_bone.basis = Basis().scaled(prev_basis_scale);
 
 				skeleton->set_bone_pose(bone_idx, local_trans_bone);
 				break;
