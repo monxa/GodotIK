@@ -76,7 +76,6 @@ void GodotIK::_process_modification() {
 	// update effector positions
 	for (IKChain &chain : chains) {
 		if (!chain.effector->is_inside_tree()) {
-			print_error("All effectors should be inside the tree here. We already check for this by having the GodotIKNode ready!");
 			// ! RETURN. If any effector is outside the tree, we are not ready yet, to process any modifications.
 			return;
 		}
