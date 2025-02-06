@@ -46,7 +46,7 @@
 		<signal name="bone_idx_changed">
 			<param index="0" name="bone_idx" type="int" />
 			<description>
-				Fired, when [member GodotIKConstraint.bone_idx] changes.
+				Fired, when [member bone_idx] changes.
 			</description>
 		</signal>
 	</signals>
