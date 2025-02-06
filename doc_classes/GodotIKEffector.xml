@@ -25,6 +25,20 @@
 		<member name="transform_mode" type="int" setter="set_leaf_behavior" getter="get_leaf_behavior" enum="GodotIKEffector.TransformMode" default="0">
 		</member>
 	</members>
+	<signals>
+		<signal name="bone_idx_changed">
+			<param index="0" name="bone_idx" type="int" />
+			<description>
+				Fired, when member [GodotIKEffector.bone_idx] changes.
+			</description>
+		</signal>
+		<signal name="chain_length_changed">
+			<param index="0" name="bone_idx" type="int" />
+			<description>
+				Fired, when member [GodotIKEffector.chain_length] changes.
+			</description>
+		</signal>
+	</signals>
 	<constants>
 		<constant name="POSITION_ONLY" value="0" enum="TransformMode">
 			Only updates the target bone's position while preserving its original rotation and scale.
