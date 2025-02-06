@@ -19,23 +19,24 @@ jobs:
         with:
           build_platform: linux
 
-  build-windows:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Build for Windows
-        uses: ./.github/actions/build
-        with:
-          build_platform: windows
+  # We only need to test one platform for now.
+  # build-windows:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Build for Windows
+  #       uses: ./.github/actions/build
+  #       with:
+  #         build_platform: windows
 
-  # If you need to build for macOS (or iOS), you could add another job:
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Build for macOS
-        uses: ./.github/actions/build
-        with:
-          build_platform: macos
+  # # If you need to build for macOS (or iOS), you could add another job:
+  # build-macos:
+  #   runs-on: macos-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: Build for macOS
+  #       uses: ./.github/actions/build
+  #       with:
+  #         build_platform: macos

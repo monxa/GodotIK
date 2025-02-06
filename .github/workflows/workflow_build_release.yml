@@ -1,0 +1,73 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: ubuntu-latest
+          - platform: linux
+            os: ubuntu-latest
+          - platform: macos
+            os: macos-latest
+          - platform: ios
+            os: macos-latest
+          - platform: android
+            os: ubuntu-latest
+          - platform: web
+            os: ubuntu-latest
+
+    steps:
+      - name: Build platform package
+        uses: ./.github/actions/build
+        with:
+          build_platform: ${{ matrix.platform }}
+          zipped: true
+
+      - name: Upload platform addons
+        uses: actions/upload-artifact@v4
+        with:
+          name: addons-${{ matrix.platform }}-${{ github.ref_name }}
+          path: addons.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create release directory
+        run: mkdir -p release/addons
+        
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          
+      - name: Extract and combine addons
+        run: |
+          for platform_zip in artifacts/addons-*/addons.zip; do
+            unzip -o "$platform_zip" -d temp/
+            cp -r temp/godot_project/addons/* release/addons/
+            rm -rf temp/
+          done
+          
+      - name: Create release archive
+        run: |
+          cd release
+          zip -r ../godot-libik-plugin-${{ github.ref_name }}.zip addons/
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: godot-libik-plugin-${{ github.ref_name }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,9 +1,13 @@
 name: "Build Action"
-description: "A composite action to build the project using SCons internal caching."
+description: "A composite action to build the project using SCons internal caching, and optionally zip the addons directory."
 inputs:
   build_platform:
-    description: "The target platform for the build (e.g., linux, windows, macos, ios)"
+    description: "The target platform for the build (e.g., linux, windows, macos, ios, android, web)"
     required: true
+  zipped:
+    description: "If true, the godot_project/addons directory will be zipped into addons.zip"
+    required: false
+    default: "false"
 runs:
   using: "composite"
   steps:
@@ -25,10 +29,21 @@ runs:
       run: |
         if [[ "${{ runner.os }}" == "Linux" ]]; then
           sudo apt-get update
-          sudo apt-get install -y scons g++ zip mingw-w64 zip
-        else
-          echo "Assuming macOS defaults"
+          sudo apt-get install -y scons g++ zip
+          if [[ "${{ inputs.build_platform }}" == "windows" ]]; then
+            sudo apt-get install -y mingw-w64
+          fi
+          if [[ "${{ inputs.build_platform }}" == "android" ]]; then
+            sudo apt-get install -y android-sdk
+          fi
+          if [[ "${{ inputs.build_platform }}" == "web" ]]; then
+            sudo apt-get install -y emscripten
+          fi
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
           brew install scons
+          if [[ "${{ inputs.build_platform }}" == "ios" ]]; then
+            brew install ios-sim
+          fi
         fi
       shell: bash
 
@@ -45,3 +60,14 @@ runs:
       with:
         path: .scons-cache
         key: ${{ runner.os }}-scons-cache-${{ hashFiles('**/*') }}
+
+    - name: Zip addons directory
+      if: ${{ inputs.zipped == 'true' }}
+      run: |
+        if [ -d "godot_project/addons" ]; then
+          zip -r addons.zip godot_project/addons
+        else
+          echo "Directory godot_project/addons not found."
+          exit 1
+        fi
+      shell: bash
