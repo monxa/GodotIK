@@ -18,12 +18,13 @@ using namespace godot;
 
 void godot::GodotIK::_notification(int p_notification) {
 	if (p_notification == NOTIFICATION_READY) {
-		connect("child_order_changed", callable_mp(this, &GodotIK::deinitialize));
+		callable_deinitialize = callable_mp(this, &GodotIK::deinitialize);
+		connect("child_order_changed", callable_deinitialize);
+		
 		StringName name = "IK/" + get_parent()->get_name();
 		if (!Performance::get_singleton()->has_custom_monitor(name)) {
 			Performance::get_singleton()->add_custom_monitor(name, callable_mp(this, &GodotIK::get_time_iteration));
 		}
-		callable_deinitialize = callable_mp(this, &GodotIK::deinitialize);
 	}
 }
 
@@ -438,17 +439,7 @@ void GodotIK::initialize_chains() {
 
 	// Collect all nested effectors
 	Vector<GodotIKEffector *> effector_list;
-	Vector<Node *> child_list; // First in, first out through iteration -> BSF
-
-	for (int i = 0; i < get_child_count(); i++) {
-		child_list.push_back(get_child(i));
-	}
-	for (int i = 0; i < child_list.size(); i++) {
-		Node *child = child_list[i];
-		for (int j = 0; j < child->get_child_count(); j++) {
-			child_list.push_back(child->get_child(j));
-		}
-	}
+	Vector<Node *> child_list = get_nested_children_dsf(this);
 
 	// Process each child if child is effector
 	for (Node *child : child_list) {
@@ -560,17 +551,8 @@ void godot::GodotIK::reset_effector_positions() {
 	}
 }
 
-void godot::GodotIK::initialize_deinitialize_connections() {
-	Vector<Node *> child_list; // First in, first out through iteration -> BSF
-	for (int i = 0; i < get_child_count(); i++) {
-		child_list.push_back(get_child(i));
-	}
-	for (int i = 0; i < child_list.size(); i++) {
-		Node *child = child_list[i];
-		for (int j = 0; j < child->get_child_count(); j++) {
-			child_list.push_back(child->get_child(j));
-		}
-	}
+void godot::GodotIK::initialize_deinitialize_connections() { // TODO: rename maybe ? :D
+	Vector<Node *> child_list = get_nested_children_dsf(this); // First in, first out through iteration -> BSF
 	for (Node *child : child_list) {
 		if (!child->is_connected("child_order_changed", callable_deinitialize)) {
 			child->connect("child_order_changed", callable_deinitialize);
