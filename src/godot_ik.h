@@ -81,6 +81,10 @@ private:
 	void initialize_chains();
 	void reset_effector_positions();
 
+	void initialize_deinitialize_connections();
+	void deinitialize();
+	Callable callable_deinitialize;
+
 	void solve_forward();
 	void solve_backward();
 
@@ -92,6 +96,8 @@ private:
 
 	Vector<int> calculate_bone_depths(Skeleton3D *p_skeleton);
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
+
+	Vector<Node * > get_nested_children_dsf(Node * base);
 
 	float snap_length = 0.001;
 	float time_iteration = 0.;

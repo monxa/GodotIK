@@ -22,8 +22,11 @@ int godot::GodotIKConstraint::get_bone_idx() {
 }
 
 void godot::GodotIKConstraint::set_bone_idx(int p_bone_idx) {
+	int old_bone_idx = bone_idx;
 	bone_idx = p_bone_idx;
-	emit_signal("bone_idx_changed", bone_idx);
+	if (old_bone_idx != bone_idx) {
+		emit_signal("bone_idx_changed", bone_idx);
+	}
 }
 
 void godot::GodotIKConstraint::_bind_methods() {

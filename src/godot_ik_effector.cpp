@@ -23,6 +23,9 @@ void GodotIKEffector::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_leaf_behavior", "transform_mode"), &GodotIKEffector::set_leaf_behavior);
 	ClassDB::bind_method(D_METHOD("get_leaf_behavior"), &GodotIKEffector::get_leaf_behavior);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "transform_mode", PROPERTY_HINT_ENUM, "Position Only, Preserve Rotation, Straighten Chain, Full Transform"), "set_leaf_behavior", "get_leaf_behavior");
+
+	ADD_SIGNAL(MethodInfo("bone_idx_changed", PropertyInfo(Variant::Type::INT, "bone_idx")));
+	ADD_SIGNAL(MethodInfo("chain_length_changed", PropertyInfo(Variant::Type::INT, "bone_idx")));
 }
 
 int GodotIKEffector::get_bone_idx() {
@@ -30,7 +33,11 @@ int GodotIKEffector::get_bone_idx() {
 }
 
 void GodotIKEffector::set_bone_idx(int p_bone_idx) {
+	int prev_bone_idx = bone_idx;
 	bone_idx = p_bone_idx;
+	if (prev_bone_idx != bone_idx) {
+		emit_signal("bone_idx_changed", bone_idx);
+	}
 }
 
 int GodotIKEffector::get_chain_length() {
@@ -38,7 +45,11 @@ int GodotIKEffector::get_chain_length() {
 }
 
 void GodotIKEffector::set_chain_length(int p_chain_length) {
+	int prev_chain_length = chain_length;
 	chain_length = p_chain_length;
+	if (prev_chain_length != chain_length) {
+		emit_signal("chain_length_changed", chain_length);
+	}
 }
 
 GodotIKEffector::TransformMode GodotIKEffector::get_leaf_behavior() {
