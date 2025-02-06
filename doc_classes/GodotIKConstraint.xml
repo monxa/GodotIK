@@ -5,6 +5,9 @@
 	</brief_description>
 	<description>
 		GodotIKConstraint offers a flexible interface for implementing custom constraints that affect how bones behave in an IK chain.
+
+		[GodotIKConstraint]s are bound to [GodotIKEffector]s and are expect to be direct children to their corresponding [GodotIKEffector].
+
 		Constraints can enforce joint limits, simulate realistic joint behavior, or introduce specialized adjustments during the IK solving process.
 		Subclasses should override the [method apply] method to define how the constraint alters bone positions and to implement any constraint-specific logic.
 	</description>

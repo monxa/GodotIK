@@ -6,6 +6,9 @@
 	<description>
 		GodotIKEffector represents the target position and orientation for the terminal bone in an IK chain.  
 		It allows developers to specify which bone should be controlled by the IK solver, adjust how many bones are affected, and configure the behavior of the chain's end.  
+
+		It must sit somewhere below a [GodotIK] node in the scene tree to function. Nesting is supported.
+
 		By setting the chain length and leaf behavior, you can fine-tune the balance between preserving existing transforms and applying full IK corrections.
 		Additionally, [GodotIKConstraint]s are supported, which are child nodes to [GodotIKEffector]s. 
 	</description>
