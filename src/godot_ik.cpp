@@ -20,7 +20,7 @@ void godot::GodotIK::_notification(int p_notification) {
 	if (p_notification == NOTIFICATION_READY) {
 		callable_deinitialize = callable_mp(this, &GodotIK::deinitialize);
 		connect("child_order_changed", callable_deinitialize);
-		
+
 		StringName name = "IK/" + get_parent()->get_name();
 		if (!Performance::get_singleton()->has_custom_monitor(name)) {
 			Performance::get_singleton()->add_custom_monitor(name, callable_mp(this, &GodotIK::get_time_iteration));
@@ -533,12 +533,12 @@ Vector<int> GodotIK::calculate_bone_depths(Skeleton3D *p_skeleton) {
 
 	Vector<int> depths;
 	depths.resize(bone_count);
-
-	Vector<int> process_list = { 0 }; // Start with the root bone.
-	depths.set(0, 0); // Root depth is 0
-
+	PackedInt32Array process_list = p_skeleton->get_parentless_bones();
+	for (int root_idx : process_list) {
+		depths.set(root_idx, 0); // Root depth is 0
+	}
 	for (int i = 0; i < process_list.size(); i++) {
-		int idx = process_list.get(i);
+		int idx = process_list[i];
 		int depth = depths.get(idx);
 
 		PackedInt32Array children = p_skeleton->get_bone_children(idx);
@@ -579,4 +579,3 @@ int GodotIK::get_iteration_count() const {
 bool godot::GodotIK::compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths) {
 	return p_depths[p_a] < p_depths[p_b];
 }
-
