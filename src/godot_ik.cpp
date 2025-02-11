@@ -49,6 +49,12 @@ void GodotIK::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_positions"), &GodotIK::get_positions);
 
 	ClassDB::bind_method(D_METHOD("set_effector_transforms_to_bones"), &GodotIK::set_effector_transforms_to_bones);
+	
+	ClassDB::bind_method(D_METHOD("set_use_global_rotation_poles", "global_rotation_poles"), &GodotIK::set_use_global_rotation_poles);
+	ClassDB::bind_method(D_METHOD("get_global_rotation_poles"), &GodotIK::get_use_global_rotation_poles);
+	ADD_PROPERTY(PropertyInfo(Variant::Type::BOOL, "use_global_rotation_poles"),
+			"set_use_global_rotation_poles",
+			"get_global_rotation_poles");
 }
 
 // ! Godot (Node) bindings
@@ -175,48 +181,34 @@ void GodotIK::apply_positions() {
 			skip++;
 			continue;
 		}
-		const Transform3D &bone_transform = transforms[bone_idx];
 
+		int grandparent_idx = identity_idx;
+		if (parent_idx != identity_idx) {
+			grandparent_idx = skeleton->get_bone_parent(parent_idx);
+		}
+		if (grandparent_idx < 0) {
+			grandparent_idx = identity_idx;
+		}
+		const Transform3D &bone_transform = transforms[bone_idx];
+		const Transform3D &grandparent_transform = transforms[grandparent_idx];
+		const Transform3D &grandparent_init_transform = initial_transforms[grandparent_idx];
 		Vector3 old_position_bone = initial_transforms[bone_idx].origin;
 		Vector3 old_position_parent = initial_transforms[parent_idx].origin;
 
 		Vector3 new_position_bone = positions[bone_idx];
 		Vector3 new_position_parent = positions[parent_idx];
 
+		Quaternion additional_rotation;
 		Vector3 old_direction = old_position_parent.direction_to(old_position_bone);
 		Vector3 new_direction = new_position_parent.direction_to(new_position_bone);
-
-		Quaternion additional_rotation = Quaternion(old_direction, new_direction);
-
-		// Handle singularity: Anti parallel vectors.
-		float dot = old_direction.dot(new_direction);
-		if (fabs(dot + 1.0f) < CMP_EPSILON) {
-			Vector3 chosen_axis;
-			
-			// Try to use parent's information if available.
-			int grand_parent_idx = -1;
-			if (parent_idx != identity_idx) {
-				grand_parent_idx = skeleton->get_bone_parent(parent_idx);
-			}
-			
-			if (grand_parent_idx != -1) {
-				// Use grandparent's position to influence the twist axis.
-				Vector3 parent_dir = positions[grand_parent_idx].direction_to(positions[parent_idx]);
-				chosen_axis = parent_dir.cross(old_direction);
-			}
-			
-			// If parent's data didn't yield a valid axis, fall back to a default arbitrary axis.
-			if (chosen_axis.length_squared() < CMP_EPSILON) {
-				chosen_axis = old_direction.cross(Vector3(1, 0, 0));
-				if (chosen_axis.length_squared() < CMP_EPSILON) {
-					chosen_axis = old_direction.cross(Vector3(0, 0, 1));
-				}
-			}
-			
-			chosen_axis = chosen_axis.normalized();
-			additional_rotation = Quaternion(chosen_axis, Math_PI); // 180° rotation.
+		if (use_global_rotation_poles) {
+			additional_rotation = Quaternion(old_direction, new_direction);
+		} else { // new approach
+			old_direction = grandparent_init_transform.basis.xform_inv(old_direction);
+			new_direction = grandparent_transform.basis.xform_inv(new_direction);
+			additional_rotation = Quaternion(old_direction, new_direction);
+			additional_rotation = grandparent_transform.basis * additional_rotation * grandparent_init_transform.basis.inverse();
 		}
-
 		Transform3D new_parent_transform = transforms[parent_idx];
 		Transform3D new_bone_transform = transforms[bone_idx];
 		new_bone_transform.origin = new_position_bone;
@@ -617,4 +609,12 @@ int GodotIK::get_iteration_count() const {
 
 bool GodotIK::compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths) {
 	return p_depths[p_a] < p_depths[p_b];
+}
+
+void GodotIK::set_use_global_rotation_poles(bool p_use_global_rotation_poles) {
+	use_global_rotation_poles = p_use_global_rotation_poles;
+}
+
+bool GodotIK::get_use_global_rotation_poles() {
+	return use_global_rotation_poles;
 }

@@ -50,6 +50,9 @@ public:
 	}
 	float get_time_iteration() { return time_iteration; }
 
+	void set_use_global_rotation_poles(bool p_use_global_rotation_poles);
+	bool get_use_global_rotation_poles();
+
 protected:
 	static void _bind_methods();
 
@@ -73,6 +76,9 @@ private:
 	//   initial_transforms[identity_idx] = Transform3D()  // or Transform3D.IDENTITY if defined
 	int identity_idx;
 
+	// this is mainly for compatibility with version 1.0.0:
+	bool use_global_rotation_poles = false;
+
 	Vector<IKChain> chains;
 	Vector<Vector<int>> chain_forward_processing_order;
 
@@ -80,7 +86,6 @@ private:
 	void initialize_groups();
 	void initialize_bone_lengths();
 	void initialize_chains();
-	void initialize_local_positions();
 	void set_effector_transforms_to_bones();
 
 	void initialize_deinitialize_connections();
@@ -101,6 +106,7 @@ private:
 
 	float snap_length = 0.001;
 	float time_iteration = 0.;
+
 }; // ! class GodotIK
 
 } // namespace godot
