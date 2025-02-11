@@ -226,6 +226,7 @@ void GodotIK::apply_positions() {
 
 		transforms.write[parent_idx] = new_parent_transform;
 		transforms.write[bone_idx] = new_bone_transform;
+		transforms.write[identity_idx] = Transform3D();
 	}
 
 	for (int bone_idx : indices_by_depth) {
