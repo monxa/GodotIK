@@ -15,3 +15,8 @@ android.debug.arm64 = "bin/libik.android.so"
 android.release.arm64 = "bin/libik.android.so"
 web.debug.wasm32 = "bin/libik.wasm"
 web.release.wasm32 = "bin/libik.wasm"
+
+[icons]
+GodotIK = "icons/icon_godot_ik.svg"
+GodotIKEffector = "icons/icon_godot_ik_effector.svg"
+GodotIKConstraint = "icons/icon_godot_ik_constraint.svg"
