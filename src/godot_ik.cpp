@@ -21,7 +21,7 @@ using namespace godot;
 
 void GodotIK::_notification(int p_notification) {
 	if (p_notification == NOTIFICATION_READY) {
-		callable_deinitialize = callable_mp(this, &GodotIK::deinitialize);
+		callable_deinitialize = callable_mp(this, &GodotIK::make_dirty);
 		connect("child_order_changed", callable_deinitialize);
 
 		StringName name = "IK/" + get_parent()->get_name();
@@ -78,8 +78,8 @@ void GodotIK::_process_modification() {
 		positions.set(i, initial_transforms[i].origin);
 	}
 	positions.set(identity_idx, Vector3());
-	if (!initialized) {
-		initialize();
+	if (dirty) {
+		initialize_if_dirty();
 	}
 	// update effector positions
 	for (IKChain &chain : chains) {
@@ -351,14 +351,14 @@ void GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, Godot
 
 // ------ Initialization ------------- /
 
-void GodotIK::initialize() {
-	initialized = false;
+void GodotIK::initialize_if_dirty() {
+	dirty = false;
 	Skeleton3D *skeleton = get_skeleton();
 	if (!skeleton) {
 		return;
 	}
 	// Connect to bone_list_changed
-	Callable callable_initialize = callable_mp(this, &GodotIK::initialize);
+	Callable callable_initialize = callable_mp(this, &GodotIK::initialize_if_dirty);
 	if (!get_skeleton()->is_connected("bone_list_changed", callable_initialize)) {
 		get_skeleton()->connect("bone_list_changed", callable_initialize);
 	}
@@ -405,7 +405,7 @@ void GodotIK::initialize() {
 	}
 	initialize_deinitialize_connections();
 
-	initialized = true;
+	dirty = false;
 }
 
 void GodotIK::initialize_groups() {
@@ -538,8 +538,8 @@ void GodotIK::initialize_deinitialize_connections() { // TODO: rename maybe ? :D
 	}
 }
 
-void GodotIK::deinitialize() {
-	initialized = false;
+void GodotIK::make_dirty() {
+	dirty = true;
 }
 // ! Initialization
 

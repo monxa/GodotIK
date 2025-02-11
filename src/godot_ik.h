@@ -56,7 +56,7 @@ protected:
 private:
 	int iteration_count = 8;
 
-	bool initialized = false;
+	bool dirty = true;
 	// Bone length relative to parent. Root has no bone length.
 	Vector<float> bone_lengths;
 	HashMap<int, Vector<int>> grouped_by_position;
@@ -76,14 +76,15 @@ private:
 	Vector<IKChain> chains;
 	Vector<Vector<int>> chain_forward_processing_order;
 
-	void initialize();
+	void initialize_if_dirty();
 	void initialize_groups();
 	void initialize_bone_lengths();
 	void initialize_chains();
+	void initialize_local_positions();
 	void set_effector_transforms_to_bones();
 
 	void initialize_deinitialize_connections();
-	void deinitialize();
+	void make_dirty();
 	Callable callable_deinitialize;
 
 	void solve_forward();
