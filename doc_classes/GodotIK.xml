@@ -15,10 +15,20 @@
 				Returns a PackedVector3Array of the current positions of all bones, measured in Skeleton space.
 			</description>
 		</method>
+		<method name="set_effector_transforms_to_bones">
+			<return type="void" />
+			<description>
+				Synchronizes the transforms of all recognized effector nodes with those of their corresponding bones. This is particularly useful for editor tooling.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="iteration_count" type="int" setter="set_iteration_count" getter="get_iteration_count" default="8">
 			Sets the number of iterations during the IK solving process. Higher values provide more accurate results but may reduce performance, while lower values improve speed with less precision.
+		</member>
+		<member name="use_global_rotation_poles" type="bool" setter="set_use_global_rotation_poles" getter="get_global_rotation_poles" default="false">
+			Maintained primarily for backwards compatibility. When enabled, global rotation poles are used as references for rotation adjustments instead of local ones.
+			See: [url]https://github.com/monxa/GodotIK/issues/26#issuecomment-2650330652[/url].
 		</member>
 	</members>
 </class>
