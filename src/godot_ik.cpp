@@ -49,7 +49,7 @@ void GodotIK::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_positions"), &GodotIK::get_positions);
 
 	ClassDB::bind_method(D_METHOD("set_effector_transforms_to_bones"), &GodotIK::set_effector_transforms_to_bones);
-	
+
 	ClassDB::bind_method(D_METHOD("set_use_global_rotation_poles", "global_rotation_poles"), &GodotIK::set_use_global_rotation_poles);
 	ClassDB::bind_method(D_METHOD("get_global_rotation_poles"), &GodotIK::get_use_global_rotation_poles);
 	ADD_PROPERTY(PropertyInfo(Variant::Type::BOOL, "use_global_rotation_poles"),
@@ -170,58 +170,89 @@ void GodotIK::apply_positions() {
 		return;
 	}
 	Vector<Transform3D> transforms = initial_transforms.duplicate();
-	
-	// -------- apply positions -----------
-	for (int bone_idx = 0; bone_idx < initial_transforms.size(); bone_idx++){
+
+	// -------- Apply Positions -----------
+	for (int bone_idx = 0; bone_idx < initial_transforms.size(); bone_idx++) {
 		transforms.write[bone_idx].origin = positions[bone_idx];
 	}
-	
-	// ------- apply rotations ------------
+
+	// ------- Apply Rotations ------------
+	const Transform3D identity_transform; // Default identity transform
+
 	for (int bone_idx : indices_by_depth) {
+		// Get parent's index; if none, use identity_idx.
 		int parent_idx = skeleton->get_bone_parent(bone_idx);
-		if (parent_idx < 0) {
-			parent_idx = identity_idx;
-		}
+		parent_idx = (parent_idx < 0) ? identity_idx : parent_idx;
 
-		if (!needs_processing[bone_idx] && !needs_processing[parent_idx]) {
+		// If neither this bone nor its parent needs processing, skip it.
+		if (!needs_processing[bone_idx] && !needs_processing[parent_idx])
 			continue;
-		}
 
+		// Determine the grandparent index.
 		int grandparent_idx = identity_idx;
 		if (parent_idx != identity_idx) {
 			grandparent_idx = skeleton->get_bone_parent(parent_idx);
+			if (grandparent_idx < 0)
+				grandparent_idx = identity_idx;
 		}
-		if (grandparent_idx < 0) {
-			grandparent_idx = identity_idx;
-		}
-		const Transform3D &bone_transform = transforms[bone_idx];
-		const Transform3D &grandparent_transform = transforms[grandparent_idx];
-		const Transform3D &grandparent_init_transform = initial_transforms[grandparent_idx];
-		Vector3 old_position_bone = initial_transforms[bone_idx].origin;
-		Vector3 old_position_parent = initial_transforms[parent_idx].origin;
 
-		Vector3 new_position_bone = transforms[bone_idx].origin;
-		Vector3 new_position_parent = transforms[parent_idx].origin;
+		// Cache the necessary transforms.
+		const Transform3D &gp_transform = transforms[grandparent_idx];
+		const Transform3D &gp_init_transform = initial_transforms[grandparent_idx];
 
+		// Retrieve positions from initial and current transforms.
+		const Vector3 &old_bone_pos = initial_transforms[bone_idx].origin;
+		const Vector3 &old_parent_pos = initial_transforms[parent_idx].origin;
+		const Vector3 &new_bone_pos = transforms[bone_idx].origin;
+		const Vector3 &new_parent_pos = transforms[parent_idx].origin;
+
+		// Compute the direction vectors (from parent to bone).
+		Vector3 old_direction = old_parent_pos.direction_to(old_bone_pos);
+		Vector3 new_direction = new_parent_pos.direction_to(new_bone_pos);
+
+		// Compute the additional rotation for adjustment.
 		Quaternion additional_rotation;
-		Vector3 old_direction = old_position_parent.direction_to(old_position_bone);
-		Vector3 new_direction = new_position_parent.direction_to(new_position_bone);
-		if (use_global_rotation_poles) {
+		if (use_global_rotation_poles) { // Old approach
 			additional_rotation = Quaternion(old_direction, new_direction);
-		} else { // new approach
-			old_direction = grandparent_init_transform.basis.xform_inv(old_direction);
-			new_direction = grandparent_transform.basis.xform_inv(new_direction);
+			// Handle singularity: Anti parallel vectors.
+			float dot = old_direction.dot(new_direction);
+			if (fabs(dot + 1.0f) < CMP_EPSILON) { // Old approach requires pole fix
+				Vector3 chosen_axis;
+
+				// Try to use parent's information if available.
+				if (grandparent_idx != -1) {
+					// Use grandparent's position to influence the twist axis.
+					Vector3 parent_dir = positions[grandparent_idx].direction_to(positions[parent_idx]);
+					chosen_axis = parent_dir.cross(old_direction);
+				}
+
+				// If parent's data didn't yield a valid axis, fall back to a default arbitrary axis.
+				if (chosen_axis.length_squared() < CMP_EPSILON) {
+					chosen_axis = old_direction.cross(Vector3(1, 0, 0));
+					if (chosen_axis.length_squared() < CMP_EPSILON) {
+						chosen_axis = old_direction.cross(Vector3(0, 0, 1));
+					}
+				}
+
+				chosen_axis = chosen_axis.normalized();
+				additional_rotation = Quaternion(chosen_axis, Math_PI); // 180 deg rotation.
+			}
+		} else { // New approach
+			// Transform directions into the grandparent's local space.
+			old_direction = gp_init_transform.basis.xform_inv(old_direction);
+			new_direction = gp_transform.basis.xform_inv(new_direction);
 			additional_rotation = Quaternion(old_direction, new_direction);
-			additional_rotation = grandparent_transform.basis * additional_rotation * grandparent_init_transform.basis.inverse();
+			// Bring the rotation back into global space.
+			additional_rotation = gp_transform.basis * additional_rotation * gp_init_transform.basis.inverse();
 		}
-		Transform3D new_parent_transform = transforms[parent_idx];
-		Transform3D new_bone_transform = transforms[bone_idx];
-		new_bone_transform.origin = new_position_bone;
 
-		new_parent_transform.basis = additional_rotation * new_parent_transform.basis;
+		// Update the parent's transform with the computed rotation.
+		Transform3D parent_transform = transforms[parent_idx];
+		parent_transform.basis = additional_rotation * parent_transform.basis;
+		transforms.write[parent_idx] = parent_transform;
 
-		transforms.write[parent_idx] = new_parent_transform;
-		transforms.write[identity_idx] = Transform3D();
+		// Ensure the identity index is kept at identity.
+		transforms.write[identity_idx] = identity_transform;
 	}
 
 	for (int bone_idx : indices_by_depth) {
