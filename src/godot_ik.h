@@ -37,6 +37,7 @@ public:
 
 	PackedStringArray _get_configuration_warnings() const override;
 
+	// public setters/getters
 	void set_iteration_count(int p_iteration_count);
 	int get_iteration_count() const;
 
@@ -79,7 +80,7 @@ private:
 	void initialize_groups();
 	void initialize_bone_lengths();
 	void initialize_chains();
-	void reset_effector_positions();
+	void set_effector_transforms_to_bones();
 
 	void initialize_deinitialize_connections();
 	void deinitialize();
@@ -95,7 +96,7 @@ private:
 	Vector<int> calculate_bone_depths(Skeleton3D *p_skeleton);
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
 
-	Vector<Node * > get_nested_children_dsf(Node * base);
+	Vector<Node *> get_nested_children_dsf(Node *base);
 
 	float snap_length = 0.001;
 	float time_iteration = 0.;

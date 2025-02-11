@@ -1,4 +1,5 @@
 #include "godot_ik.h"
+#include "godot_cpp/variant/transform3d.hpp"
 #include "godot_ik_effector.h"
 
 #include <cstdint>
@@ -16,7 +17,9 @@
 
 using namespace godot;
 
-void godot::GodotIK::_notification(int p_notification) {
+// ----- Godot (Node) bindings -------
+
+void GodotIK::_notification(int p_notification) {
 	if (p_notification == NOTIFICATION_READY) {
 		callable_deinitialize = callable_mp(this, &GodotIK::deinitialize);
 		connect("child_order_changed", callable_deinitialize);
@@ -44,7 +47,11 @@ void GodotIK::_bind_methods() {
 			"set_iteration_count",
 			"get_iteration_count");
 	ClassDB::bind_method(D_METHOD("get_positions"), &GodotIK::get_positions);
+
+	ClassDB::bind_method(D_METHOD("set_effector_transforms_to_bones"), &GodotIK::set_effector_transforms_to_bones);
 }
+
+// ! Godot (Node) bindings
 
 // ------ Update --------
 
@@ -151,7 +158,7 @@ void GodotIK::solve_forward() {
 	}
 }
 
-void godot::GodotIK::apply_positions() {
+void GodotIK::apply_positions() {
 	Skeleton3D *skeleton = get_skeleton();
 	if (!skeleton) {
 		return;
@@ -168,8 +175,6 @@ void godot::GodotIK::apply_positions() {
 			skip++;
 			continue;
 		}
-		Transform3D parent_transform;
-		parent_transform = transforms[parent_idx];
 		const Transform3D &bone_transform = transforms[bone_idx];
 
 		Vector3 old_position_bone = initial_transforms[bone_idx].origin;
@@ -189,6 +194,7 @@ void godot::GodotIK::apply_positions() {
 
 		new_parent_transform.origin = positions[parent_idx];
 		new_parent_transform.basis = additional_rotation * new_parent_transform.basis;
+
 		transforms.write[parent_idx] = new_parent_transform;
 		transforms.write[bone_idx] = new_bone_transform;
 	}
@@ -268,7 +274,7 @@ void godot::GodotIK::apply_positions() {
 	}
 }
 
-void godot::GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, GodotIKConstraint::Dir p_dir) {
+void GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, GodotIKConstraint::Dir p_dir) {
 	if (p_idx_in_chain >= p_chain.bones.size()) {
 		return;
 	}
@@ -341,7 +347,8 @@ void GodotIK::initialize() {
 		struct DepthComparator {
 			const Vector<int> &depths;
 			DepthComparator(const Vector<int> &p_depths) :
-					depths(p_depths) {}
+					depths(p_depths) {
+			}
 
 			bool operator()(int a, int b) const {
 				return depths[a] < depths[b];
@@ -368,11 +375,12 @@ void GodotIK::initialize() {
 		}
 	}
 	initialize_deinitialize_connections();
+
 	initialized = true;
 }
 
 void GodotIK::initialize_groups() {
-	godot::Skeleton3D *skeleton = get_skeleton();
+	Skeleton3D *skeleton = get_skeleton();
 	grouped_by_position = HashMap<int, Vector<int32_t>>();
 
 	if (skeleton == nullptr) {
@@ -410,7 +418,7 @@ void GodotIK::initialize_groups() {
 }
 
 void GodotIK::initialize_bone_lengths() {
-	godot::Skeleton3D *skeleton = get_skeleton();
+	Skeleton3D *skeleton = get_skeleton();
 	if (skeleton == nullptr) {
 		return;
 	}
@@ -479,19 +487,7 @@ void GodotIK::initialize_chains() {
 	}
 }
 
-void godot::GodotIK::reset_effector_positions() {
-	Skeleton3D *skeleton = get_skeleton();
-	if (!skeleton)
-		return;
-	for (auto chain : chains) {
-		if (chain.bones.size() == 0)
-			continue;
-		Vector3 bone_position = positions[chain.bones[0]];
-		chain.effector->set_global_transform(skeleton->get_global_transform() * initial_transforms[chain.bones[0]]);
-	}
-}
-
-void godot::GodotIK::initialize_deinitialize_connections() { // TODO: rename maybe ? :D
+void GodotIK::initialize_deinitialize_connections() { // TODO: rename maybe ? :D
 	Vector<Node *> child_list = get_nested_children_dsf(this); // First in, first out through iteration -> BSF
 	for (Node *child : child_list) {
 		if (!child->is_connected("child_order_changed", callable_deinitialize)) {
@@ -513,7 +509,7 @@ void godot::GodotIK::initialize_deinitialize_connections() { // TODO: rename may
 	}
 }
 
-void godot::GodotIK::deinitialize() {
+void GodotIK::deinitialize() {
 	initialized = false;
 }
 // ! Initialization
@@ -550,7 +546,7 @@ Vector<int> GodotIK::calculate_bone_depths(Skeleton3D *p_skeleton) {
 	return depths;
 }
 
-Vector<Node *> godot::GodotIK::get_nested_children_dsf(Node *base) {
+Vector<Node *> GodotIK::get_nested_children_dsf(Node *base) {
 	Vector<Node *> child_list; // First in, first out through iteration -> BSF
 
 	for (int i = 0; i < base->get_child_count(); i++) {
@@ -565,6 +561,19 @@ Vector<Node *> godot::GodotIK::get_nested_children_dsf(Node *base) {
 	return child_list;
 }
 
+// For editor tooling:
+void GodotIK::set_effector_transforms_to_bones() {
+	Skeleton3D *skeleton = get_skeleton();
+	if (!skeleton)
+		return;
+	for (auto chain : chains) {
+		if (chain.bones.size() == 0)
+			continue;
+		Vector3 bone_position = positions[chain.bones[0]];
+		chain.effector->set_global_transform(skeleton->get_global_transform() * initial_transforms[chain.bones[0]]);
+	}
+}
+
 // !Helpers
 
 /*-------- Setters & Getters ------------*/
@@ -576,6 +585,6 @@ int GodotIK::get_iteration_count() const {
 	return iteration_count;
 }
 
-bool godot::GodotIK::compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths) {
+bool GodotIK::compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths) {
 	return p_depths[p_a] < p_depths[p_b];
 }
