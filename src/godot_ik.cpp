@@ -170,7 +170,13 @@ void GodotIK::apply_positions() {
 		return;
 	}
 	Vector<Transform3D> transforms = initial_transforms.duplicate();
-	int skip = 0;
+	
+	// -------- apply positions -----------
+	for (int bone_idx = 0; bone_idx < initial_transforms.size(); bone_idx++){
+		transforms.write[bone_idx].origin = positions[bone_idx];
+	}
+	
+	// ------- apply rotations ------------
 	for (int bone_idx : indices_by_depth) {
 		int parent_idx = skeleton->get_bone_parent(bone_idx);
 		if (parent_idx < 0) {
@@ -178,7 +184,6 @@ void GodotIK::apply_positions() {
 		}
 
 		if (!needs_processing[bone_idx] && !needs_processing[parent_idx]) {
-			skip++;
 			continue;
 		}
 
@@ -195,8 +200,8 @@ void GodotIK::apply_positions() {
 		Vector3 old_position_bone = initial_transforms[bone_idx].origin;
 		Vector3 old_position_parent = initial_transforms[parent_idx].origin;
 
-		Vector3 new_position_bone = positions[bone_idx];
-		Vector3 new_position_parent = positions[parent_idx];
+		Vector3 new_position_bone = transforms[bone_idx].origin;
+		Vector3 new_position_parent = transforms[parent_idx].origin;
 
 		Quaternion additional_rotation;
 		Vector3 old_direction = old_position_parent.direction_to(old_position_bone);
@@ -213,11 +218,9 @@ void GodotIK::apply_positions() {
 		Transform3D new_bone_transform = transforms[bone_idx];
 		new_bone_transform.origin = new_position_bone;
 
-		new_parent_transform.origin = positions[parent_idx];
 		new_parent_transform.basis = additional_rotation * new_parent_transform.basis;
 
 		transforms.write[parent_idx] = new_parent_transform;
-		transforms.write[bone_idx] = new_bone_transform;
 		transforms.write[identity_idx] = Transform3D();
 	}
 
