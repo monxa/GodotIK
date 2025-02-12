@@ -445,13 +445,6 @@ void GodotIK::initialize_if_dirty() {
 		}
 	}
 	initialize_deinitialize_connections();
-
-	for (const IKChain &chain : chains) {
-		chain.effector->set_skeleton(skeleton);
-		for (GodotIKConstraint *constraint : chain.constraints) {
-			constraint->set_skeleton(skeleton);
-		}
-	}
 	dirty = false;
 }
 
@@ -555,8 +548,10 @@ void GodotIK::initialize_chains() {
 					continue;
 				}
 				new_chain.constraints.write[placement_in_chain] = constraint;
+				constraint->set_skeleton(skeleton);
 			}
 		}
+		effector->set_skeleton(skeleton);
 		chains.push_back(new_chain);
 	}
 }

@@ -19,11 +19,11 @@ PackedVector3Array GodotIKConstraint::apply(Vector3 p_pos_parent_bone, Vector3 p
 	return result;
 }
 
-int godot::GodotIKConstraint::get_bone_idx() const {
+int GodotIKConstraint::get_bone_idx() const {
 	return bone_idx;
 }
 
-void godot::GodotIKConstraint::set_bone_idx(int p_bone_idx) {
+void GodotIKConstraint::set_bone_idx(int p_bone_idx) {
 	int old_bone_idx = bone_idx;
 	bone_idx = p_bone_idx;
 	if (old_bone_idx != bone_idx) {
@@ -31,11 +31,11 @@ void godot::GodotIKConstraint::set_bone_idx(int p_bone_idx) {
 	}
 }
 
-void godot::GodotIKConstraint::set_skeleton(godot::Skeleton3D *p_skeleton) {
+void GodotIKConstraint::set_skeleton(godot::Skeleton3D *p_skeleton) {
 	skeleton = p_skeleton;
 }
 
-godot::Skeleton3D *godot::GodotIKConstraint::get_skeleton() const {
+Skeleton3D *godot::GodotIKConstraint::get_skeleton() const {
 	return skeleton;
 }
 

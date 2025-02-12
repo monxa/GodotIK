@@ -31,7 +31,7 @@ protected:
 
 private:
 	int bone_idx;
-	Skeleton3D *skeleton;
+	godot::Skeleton3D *skeleton;
 }; // ! class GodotIKConstraint
 } //namespace godot
 
