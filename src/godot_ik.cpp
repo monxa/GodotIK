@@ -446,6 +446,12 @@ void GodotIK::initialize_if_dirty() {
 	}
 	initialize_deinitialize_connections();
 
+	for (const IKChain &chain : chains) {
+		chain.effector->set_skeleton(skeleton);
+		for (GodotIKConstraint *constraint : chain.constraints) {
+			constraint->set_skeleton(skeleton);
+		}
+	}
 	dirty = false;
 }
 
@@ -512,7 +518,6 @@ void GodotIK::initialize_chains() {
 	}
 
 	// Collect all nested effectors
-	Vector<GodotIKEffector *> effector_list;
 	Vector<Node *> child_list = get_nested_children_dsf(this);
 
 	// Process each child if child is effector
@@ -552,7 +557,6 @@ void GodotIK::initialize_chains() {
 				new_chain.constraints.write[placement_in_chain] = constraint;
 			}
 		}
-
 		chains.push_back(new_chain);
 	}
 }
@@ -616,7 +620,7 @@ Vector<int> GodotIK::calculate_bone_depths(Skeleton3D *p_skeleton) {
 	return depths;
 }
 
-Vector<Node *> GodotIK::get_nested_children_dsf(Node *base) {
+Vector<Node *> GodotIK::get_nested_children_dsf(Node *base) const {
 	Vector<Node *> child_list; // First in, first out through iteration -> BSF
 
 	for (int i = 0; i < base->get_child_count(); i++) {
@@ -663,6 +667,6 @@ void GodotIK::set_use_global_rotation_poles(bool p_use_global_rotation_poles) {
 	use_global_rotation_poles = p_use_global_rotation_poles;
 }
 
-bool GodotIK::get_use_global_rotation_poles() {
+bool GodotIK::get_use_global_rotation_poles() const {
 	return use_global_rotation_poles;
 }

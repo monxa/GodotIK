@@ -5,6 +5,8 @@
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/godot.hpp>
 
+#include <godot_cpp/classes/skeleton3d.hpp>
+
 using namespace godot;
 void GodotIKEffector::_bind_methods() {
 	BIND_ENUM_CONSTANT(POSITION_ONLY);
@@ -26,9 +28,11 @@ void GodotIKEffector::_bind_methods() {
 
 	ADD_SIGNAL(MethodInfo("bone_idx_changed", PropertyInfo(Variant::Type::INT, "bone_idx")));
 	ADD_SIGNAL(MethodInfo("chain_length_changed", PropertyInfo(Variant::Type::INT, "chain_length")));
+
+	ClassDB::bind_method(D_METHOD("get_skeleton"), &GodotIKEffector::get_skeleton);
 }
 
-int GodotIKEffector::get_bone_idx() {
+int GodotIKEffector::get_bone_idx() const {
 	return bone_idx;
 }
 
@@ -40,7 +44,7 @@ void GodotIKEffector::set_bone_idx(int p_bone_idx) {
 	}
 }
 
-int GodotIKEffector::get_chain_length() {
+int GodotIKEffector::get_chain_length() const {
 	return chain_length;
 }
 
@@ -52,10 +56,18 @@ void GodotIKEffector::set_chain_length(int p_chain_length) {
 	}
 }
 
-GodotIKEffector::TransformMode GodotIKEffector::get_leaf_behavior() {
+GodotIKEffector::TransformMode GodotIKEffector::get_leaf_behavior() const {
 	return transform_mode;
 }
 
 void GodotIKEffector::set_leaf_behavior(TransformMode p_leaf_behavior) {
 	transform_mode = p_leaf_behavior;
+}
+
+Skeleton3D *GodotIKEffector::get_skeleton() const {
+	return skeleton;
+}
+
+void GodotIKEffector::set_skeleton(Skeleton3D *p_skeleton) {
+	skeleton = p_skeleton;
 }

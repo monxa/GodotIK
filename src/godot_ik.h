@@ -48,10 +48,10 @@ public:
 		}
 		return result;
 	}
-	float get_time_iteration() { return time_iteration; }
+	float get_time_iteration() const { return time_iteration; }
 
 	void set_use_global_rotation_poles(bool p_use_global_rotation_poles);
-	bool get_use_global_rotation_poles();
+	bool get_use_global_rotation_poles() const;
 
 protected:
 	static void _bind_methods();
@@ -102,7 +102,7 @@ private:
 	Vector<int> calculate_bone_depths(Skeleton3D *p_skeleton);
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
 
-	Vector<Node *> get_nested_children_dsf(Node *base);
+	Vector<Node *> get_nested_children_dsf(Node *base) const;
 
 	float snap_length = 0.001;
 	float time_iteration = 0.;

@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		GodotIKConstraint provides a base for creating custom constraints that affect bone behavior in an IK chain. It must be attached as a direct child of a [GodotIKEffector] node.
-		The [method apply] must be overridden in subclasses to adjust bone positions according to the constraint.
+		The method [method apply] must be overridden in subclasses to adjust bone positions according to the constraint.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -18,12 +18,19 @@
 			<param index="3" name="chain_direction" type="int" />
 			<description>
 				Adjusts bone positions in an IK chain according to the constraint.
+				All parameter positions and expected returned positions are in the skeleton local space.
 				Parameters:
 				- [param pos_parent_bone]: The parent bone's position.
 				- [param pos_bone]: The current bone's position.
 				- [param pos_child_bone]: The child bone's position.
 				- [param chain_direction]: The direction along the IK chain, using [enum GodotIKConstraint.FORWARD] or [enum GodotIKConstraint.BACKWARD].
 				Returns a [code]PackedVector3Array[/code] with the positions [code][pos_parent_bone, pos_bone, pos_child_bone][/code].
+			</description>
+		</method>
+		<method name="get_skeleton">
+			<return type="Skeleton3D" />
+			<description>
+				Returns the skeleton to which this constraint is attached to.
 			</description>
 		</method>
 	</methods>

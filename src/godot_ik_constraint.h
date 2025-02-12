@@ -7,6 +7,8 @@
 #include <godot_cpp/core/gdvirtual.gen.inc>
 
 namespace godot {
+class Skeleton3D;
+
 class GodotIKConstraint : public Node {
 	GDCLASS(GodotIKConstraint, Node);
 
@@ -16,8 +18,11 @@ public:
 		FORWARD = 1
 	};
 	virtual PackedVector3Array apply(Vector3 p_parent_bone_pos, Vector3 p_bone_pos, Vector3 p_child_bone_pos, int direction);
-	int get_bone_idx();
+	int get_bone_idx() const;
 	void set_bone_idx(int p_bone_idx);
+
+	void set_skeleton(godot::Skeleton3D *p_skeleton);
+	godot::Skeleton3D *get_skeleton() const;
 
 protected:
 	static void _bind_methods();
@@ -26,6 +31,7 @@ protected:
 
 private:
 	int bone_idx;
+	Skeleton3D *skeleton;
 }; // ! class GodotIKConstraint
 } //namespace godot
 

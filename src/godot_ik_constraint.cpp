@@ -2,6 +2,8 @@
 
 using namespace godot;
 
+#include <godot_cpp/classes/skeleton3d.hpp>
+
 PackedVector3Array GodotIKConstraint::apply(Vector3 p_pos_parent_bone, Vector3 p_pos_bone, Vector3 p_pos_child_bone, int p_chain_direction) {
 	PackedVector3Array result;
 	bool success = GDVIRTUAL_CALL(apply, p_pos_parent_bone, p_pos_bone, p_pos_child_bone, p_chain_direction, result);
@@ -17,7 +19,7 @@ PackedVector3Array GodotIKConstraint::apply(Vector3 p_pos_parent_bone, Vector3 p
 	return result;
 }
 
-int godot::GodotIKConstraint::get_bone_idx() {
+int godot::GodotIKConstraint::get_bone_idx() const {
 	return bone_idx;
 }
 
@@ -29,6 +31,14 @@ void godot::GodotIKConstraint::set_bone_idx(int p_bone_idx) {
 	}
 }
 
+void godot::GodotIKConstraint::set_skeleton(godot::Skeleton3D *p_skeleton) {
+	skeleton = p_skeleton;
+}
+
+godot::Skeleton3D *godot::GodotIKConstraint::get_skeleton() const {
+	return skeleton;
+}
+
 void godot::GodotIKConstraint::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_idx"), &GodotIKConstraint::get_bone_idx);
 	ClassDB::bind_method(D_METHOD("set_bone_idx", "bone_idx"), &GodotIKConstraint::set_bone_idx);
@@ -37,4 +47,5 @@ void godot::GodotIKConstraint::_bind_methods() {
 	BIND_ENUM_CONSTANT(BACKWARD);
 	BIND_ENUM_CONSTANT(FORWARD);
 	ADD_SIGNAL(MethodInfo("bone_idx_changed", PropertyInfo(Variant::Type::INT, "bone_idx")));
+	ClassDB::bind_method(D_METHOD("get_skeleton"), &GodotIKConstraint::get_skeleton);
 }
