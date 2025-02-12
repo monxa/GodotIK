@@ -177,6 +177,9 @@ void GodotIK::apply_positions() {
 	}
 
 	// ------- Apply Rotations ------------
+	Vector<bool> rotation_processed;
+	rotation_processed.resize(transforms.size());
+	rotation_processed.fill(false);
 	const Transform3D identity_transform; // Default identity transform
 
 	for (int bone_idx : indices_by_depth) {
@@ -187,6 +190,15 @@ void GodotIK::apply_positions() {
 		// If neither this bone nor its parent needs processing, skip it.
 		if (!needs_processing[bone_idx] && !needs_processing[parent_idx])
 			continue;
+
+		// Only apply rotation correction once to each parent_idx. All children will share the same position.
+		// We greedily process the first child->parent relation only.
+		if (rotation_processed[parent_idx]) {
+			continue;
+		}
+		rotation_processed.write[parent_idx] = true;
+
+		// Parent idx can't escape processing now ------------------
 
 		// Determine the grandparent index.
 		int grandparent_idx = identity_idx;
@@ -254,6 +266,8 @@ void GodotIK::apply_positions() {
 		// Ensure the identity index is kept at identity.
 		transforms.write[identity_idx] = identity_transform;
 	}
+
+	// ------ Apply previously calculated global rotations in local space -------
 
 	for (int bone_idx : indices_by_depth) {
 		if (!needs_processing[bone_idx]) {
