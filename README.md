@@ -25,6 +25,8 @@ For further reference, check out the `doc_classes/` directory; it tells it all.
 ### Demo
 [demo_libik.webm](https://github.com/user-attachments/assets/f0c0ee04-3cf1-4af9-b92a-091fd7bb769b)
 
+[demo_local_rotations.webm](https://github.com/user-attachments/assets/97054a20-d62d-48fd-94d2-75b65f4042ad)
+
 <sup>(Video sometimes doesn't load. Refreshing page often helps.)</sup>
 
 ### Getting started
