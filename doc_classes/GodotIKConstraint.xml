@@ -27,10 +27,16 @@
 				Returns a [code]PackedVector3Array[/code] with the positions [code][pos_parent_bone, pos_bone, pos_child_bone][/code].
 			</description>
 		</method>
-		<method name="get_skeleton">
+		<method name="get_ik_controller" qualifiers="const">
+			<return type="GodotIK" />
+			<description>
+				Returns the IK controller associated with this node. The IK controller provides centralized access to the underlying skeleton and other IK-related properties.
+			</description>
+		</method>
+		<method name="get_skeleton" qualifiers="const">
 			<return type="Skeleton3D" />
 			<description>
-				Returns the skeleton to which this constraint is attached to.
+				Returns the Skeleton3D instance from the associated IK controller, or null if no IK controller is set.
 			</description>
 		</method>
 	</methods>

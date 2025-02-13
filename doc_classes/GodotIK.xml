@@ -9,10 +9,10 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_positions">
-			<return type="PackedVector3Array" />
+		<method name="get_bone_position" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="bone_idx" type="int" />
 			<description>
-				Returns a PackedVector3Array of the current positions of all bones, measured in Skeleton space.
 			</description>
 		</method>
 		<method name="set_effector_transforms_to_bones">
