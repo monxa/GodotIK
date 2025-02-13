@@ -465,7 +465,7 @@ void GodotIK::initialize_groups() {
 		// Construct <snapped(position), child-indices>
 		for (int child_index : children) {
 			Vector3 pos_j = skeleton->get_bone_pose_position(child_index);
-			pos_j.snapf(snap_length);
+			pos_j.snapf(CMP_EPSILON);
 
 			if (!pos_groups.has(pos_j)) {
 				pos_groups[pos_j] = Vector<int32_t>();

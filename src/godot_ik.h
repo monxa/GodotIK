@@ -79,6 +79,7 @@ private:
 	// this is mainly for compatibility with version 1.0.0:
 	bool use_global_rotation_poles = false;
 
+	float time_iteration = 0.;
 	Vector<IKChain> chains;
 	Vector<Vector<int>> chain_forward_processing_order;
 
@@ -103,9 +104,6 @@ private:
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
 
 	Vector<Node *> get_nested_children_dsf(Node *base);
-
-	float snap_length = 0.001;
-	float time_iteration = 0.;
 
 }; // ! class GodotIK
 
