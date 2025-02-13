@@ -33,7 +33,7 @@ void GodotIKEffector::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_skeleton"), &GodotIKEffector::get_skeleton);
 
-	ClassDB::bind_method(D_METHOD("get_ik_controller"), &GodotIKConstraint::get_ik_controller);
+	ClassDB::bind_method(D_METHOD("get_ik_controller"), &GodotIKEffector::get_ik_controller);
 }
 
 int GodotIKEffector::get_bone_idx() const {
