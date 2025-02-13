@@ -41,13 +41,11 @@ public:
 	void set_iteration_count(int p_iteration_count);
 	int get_iteration_count() const;
 
-	PackedVector3Array get_positions() {
-		PackedVector3Array result;
-		for (Vector3 p : positions) {
-			result.push_back(p);
-		}
-		return result;
+	Vector3 get_bone_position(int p_bone_idx) const {
+		ERR_FAIL_INDEX_V(p_bone_idx, positions.size(), Vector3());
+		return positions[p_bone_idx];
 	}
+
 	float get_time_iteration() const { return time_iteration; }
 
 	void set_use_global_rotation_poles(bool p_use_global_rotation_poles);

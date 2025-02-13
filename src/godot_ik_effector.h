@@ -6,6 +6,7 @@
 
 namespace godot {
 class Skeleton3D;
+class GodotIK;
 
 class GodotIKEffector : public Node3D {
 	GDCLASS(GodotIKEffector, Node3D)
@@ -26,8 +27,10 @@ public:
 	TransformMode get_leaf_behavior() const;
 	void set_leaf_behavior(TransformMode p_leaf_behavior);
 
+	void set_ik_controller(GodotIK *p_ik_controller);
+	GodotIK *get_ik_controller() const;
+
 	Skeleton3D *get_skeleton() const;
-	void set_skeleton(Skeleton3D *p_skeleton);
 
 protected:
 	static void _bind_methods();
@@ -36,7 +39,7 @@ private:
 	int bone_idx = 0;
 	int chain_length = 2;
 	TransformMode transform_mode = TransformMode::POSITION_ONLY;
-	Skeleton3D *skeleton = nullptr;
+	GodotIK *ik_controller = nullptr;
 
 }; // ! class GodotIKEffector
 } //namespace godot
