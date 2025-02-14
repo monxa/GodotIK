@@ -68,10 +68,11 @@ void GodotIKEffector::set_leaf_behavior(TransformMode p_leaf_behavior) {
 	transform_mode = p_leaf_behavior;
 }
 
-void godot::GodotIKEffector::set_ik_controller(GodotIK *p_ik_controller) {
+void GodotIKEffector::set_ik_controller(GodotIK *p_ik_controller) {
+	ik_controller = p_ik_controller;
 }
 
-GodotIK *godot::GodotIKEffector::get_ik_controller() const {
+GodotIK *GodotIKEffector::get_ik_controller() const {
 	return ik_controller;
 }
 
