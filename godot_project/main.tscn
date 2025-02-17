@@ -1,9 +1,8 @@
-[gd_scene load_steps=21 format=4 uid="uid://c8qi1bwxkr7hd"]
+[gd_scene load_steps=20 format=4 uid="uid://c8qi1bwxkr7hd"]
 
 [ext_resource type="Script" uid="uid://cxopkguwpcegj" path="res://skeleton_3d.gd" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://butv1kt1g08vw" path="res://godot_ik_with_tooling.gd" id="2_1bvp3"]
 [ext_resource type="Script" uid="uid://df7j0ab7lmhoy" path="res://addons/libik/script/pole_bone_constraint.gd" id="2_h2yge"]
-[ext_resource type="Script" uid="uid://cktrvq0he8tto" path="res://effector_rl.gd" id="4_1bvp3"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plc31"]
 resource_name = "Material.002"
@@ -405,7 +404,6 @@ metadata/_custom_type_script = ExtResource("2_h2yge")
 [node name="EffectorRL" type="GodotIKEffector" parent="SkeletonWolf/GodotIK"]
 bone_idx = 10
 transform = Transform3D(0.980905, -0.009508, 0.194254, -0.0203943, -0.998326, 0.0541186, 0.193414, -0.0570473, -0.979456, 0.191384, 0.268114, -0.742832)
-script = ExtResource("4_1bvp3")
 
 [node name="EffectorRR" type="GodotIKEffector" parent="SkeletonWolf/GodotIK"]
 bone_idx = 12

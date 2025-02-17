@@ -22,7 +22,7 @@ PackedVector3Array GodotIKConstraint::apply(Vector3 p_pos_parent_bone, Vector3 p
 	bool success = GDVIRTUAL_CALL(apply, p_pos_parent_bone, p_pos_bone, p_pos_child_bone, p_chain_direction, result);
 	if (success == false || result.size() != 3) {
 		if (apply_method_implemented) {
-			ERR_PRINT("Implement GodotIKConstraint::apply in derived class, that returns (modified) {parent_pos_bone, pos_bone, pos_child_bone}.");
+			ERR_PRINT("Implement GodotIKConstraint::apply in derived class that returns (modified) {parent_pos_bone, pos_bone, pos_child_bone}.");
 		}
 		apply_method_implemented = false;
 		return { p_pos_parent_bone, p_pos_bone, p_pos_child_bone };

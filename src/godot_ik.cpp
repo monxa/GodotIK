@@ -1,6 +1,7 @@
 #include "godot_ik.h"
 #include "godot_cpp/variant/transform3d.hpp"
 #include "godot_ik_effector.h"
+#include "godot_ik_pole.h"
 
 #include <cstdint>
 #include <godot_cpp/classes/performance.hpp>
@@ -38,25 +39,27 @@ void GodotIK::_bind_methods() {
 
 void GodotIK::_notification(int p_notification) {
 	if (p_notification == NOTIFICATION_READY) {
+		Callable callable_initialize = callable_mp(this, &GodotIK::initialize_if_dirty);
 		callable_deinitialize = callable_mp(this, &GodotIK::make_dirty);
-		connect("child_order_changed", callable_deinitialize);
+		connect("child_order_changed", callable_initialize);
 
 		StringName name = "IK/" + get_parent()->get_name();
 		if (!Performance::get_singleton()->has_custom_monitor(name)) {
 			Performance::get_singleton()->add_custom_monitor(name, callable_mp(this, &GodotIK::get_time_iteration));
 		}
+		if (get_skeleton()) {
+			initialize_if_dirty();
+		}
 	}
 }
 
 PackedStringArray GodotIK::_get_configuration_warnings() const {
-	int c = get_child_count();
 	PackedStringArray result;
-	if (c == 0) {
+	if (chains.size() == 0 && is_active()) {
 		result.push_back("At least one child effector is required.");
 	}
 	return result;
 }
-
 
 // ! Godot (Node) bindings
 
@@ -73,22 +76,12 @@ void GodotIK::_process_modification() {
 	float t1 = Time::get_singleton()->get_ticks_usec();
 
 	// Initialize positions with base
-	identity_idx = skeleton->get_bone_count();
-	initial_transforms.resize(identity_idx + 1); // +1 for identity index
-
-	for (int i = 0; i < skeleton->get_bone_count(); i++) {
-		initial_transforms.set(i, skeleton->get_bone_global_pose(i));
-	}
-	initial_transforms.set(identity_idx, Transform3D()); // buffer an identity transform
-	positions.resize(identity_idx + 1);
-	for (int i = 0; i < skeleton->get_bone_count(); i++) {
-		positions.set(i, initial_transforms[i].origin);
-	}
-	positions.set(identity_idx, Vector3());
 	if (dirty) {
 		initialize_if_dirty();
 	}
-	// update effector positions
+
+	update_all_transforms_from_skeleton();
+
 	for (IKChain &chain : chains) {
 		if (!chain.effector->is_inside_tree()) {
 			// ! RETURN. If any effector is outside the tree, we are not ready yet, to process any modifications.
@@ -225,6 +218,7 @@ void GodotIK::apply_positions() {
 
 		// Compute the additional rotation for adjustment.
 		Quaternion additional_rotation;
+
 		if (use_global_rotation_poles) { // Old approach
 			additional_rotation = Quaternion(old_direction, new_direction);
 			// Handle singularity: Anti parallel vectors.
@@ -250,11 +244,45 @@ void GodotIK::apply_positions() {
 				chosen_axis = chosen_axis.normalized();
 				additional_rotation = Quaternion(chosen_axis, Math_PI); // 180 deg rotation.
 			}
-		} else { // New approach
+		} else { // New approach: use_global_rotation_poles = false
 			// Transform directions into the grandparent's local space.
 			old_direction = gp_init_transform.basis.xform_inv(old_direction);
 			new_direction = gp_transform.basis.xform_inv(new_direction);
 			additional_rotation = Quaternion(old_direction, new_direction);
+
+			{
+				GodotIKEffector::TwistMode twist_mode = GodotIKEffector::TwistMode::DYNAMIC;
+				GodotIKPole *pole = nullptr;
+				for (GodotIKEffector *effector : bone_effector_map[bone_idx]) {
+					twist_mode = MAX(twist_mode, effector->get_twist_mode());
+					if (effector->get_pole() && pole == nullptr) {
+						pole = effector->get_pole();
+					}
+				}
+				if (twist_mode == GodotIKEffector::TwistMode::PRESERVE_TWIST) {
+					Vector3 UP = old_direction;
+					Vector3 ref(-1, 0, 0);
+
+					// Rotate the reference vector.
+					Vector3 rotatedRef = additional_rotation.xform(ref);
+					if (pole) {
+						Vector3 pole_pos = skeleton->get_global_transform().affine_inverse().xform(pole->get_global_position());
+						Vector3 direction_to_pole = gp_transform.basis.xform_inv(new_parent_pos.direction_to(pole_pos));
+						rotatedRef = direction_to_pole;
+					}
+					// Project rotatedRef onto the plane perpendicular to UP and normalize.
+					rotatedRef = (rotatedRef - UP * rotatedRef.dot(UP)).normalized();
+
+					// Compute the twist angle as the signed angle between ref and rotatedRef around UP.
+					float twistAngle = atan2(UP.dot(ref.cross(rotatedRef)), ref.dot(rotatedRef));
+
+					// Construct the twist quaternion and remove it from additional_rotation.
+					Quaternion twist(UP, twistAngle);
+					additional_rotation = additional_rotation * twist.inverse();
+					Vector3 adjusted_old_direction = additional_rotation.xform(old_direction);
+					additional_rotation = additional_rotation * Quaternion(adjusted_old_direction, new_direction);
+				}
+			}
 			// Bring the rotation back into global space.
 			additional_rotation = gp_transform.basis * additional_rotation * gp_init_transform.basis.inverse();
 		}
@@ -293,7 +321,7 @@ void GodotIK::apply_positions() {
 			continue;
 		}
 
-		GodotIKEffector::TransformMode transform_mode = effector->get_leaf_behavior();
+		GodotIKEffector::TransformMode transform_mode = effector->get_transform_mode();
 		if (transform_mode == GodotIKEffector::TransformMode::POSITION_ONLY) {
 			continue;
 		}
@@ -430,6 +458,7 @@ void GodotIK::initialize_if_dirty() {
 		indices_by_depth = indices;
 	}
 	initialize_bone_lengths();
+
 	initialize_chains();
 	// + 1 for identity_idx
 	needs_processing.resize(skeleton->get_bone_count() + 1);
@@ -445,7 +474,19 @@ void GodotIK::initialize_if_dirty() {
 			}
 		}
 	}
-	initialize_deinitialize_connections();
+	initialize_deinitialize_connections(this);
+	for (GodotIKRoot *ext : external_roots) {
+		initialize_deinitialize_connections(ext);
+	}
+	identity_idx = skeleton->get_bone_count();
+
+	bone_effector_map.resize(identity_idx + 1);
+	bone_effector_map.fill(Vector<GodotIKEffector *>());
+	for (const IKChain &chain : chains) {
+		for (const int bone_idx : chain.bones) {
+			bone_effector_map.write[bone_idx].push_back(chain.effector);
+		}
+	}
 	dirty = false;
 }
 
@@ -484,7 +525,6 @@ void GodotIK::initialize_groups() {
 	for (int bone : skeleton->get_parentless_bones()) {
 		grouped_by_position[bone] = { bone };
 	}
-	return;
 }
 
 void GodotIK::initialize_bone_lengths() {
@@ -502,7 +542,6 @@ void GodotIK::initialize_bone_lengths() {
 void GodotIK::initialize_chains() {
 	// Ensure chains are clear for initialization
 	chains.clear();
-	chain_forward_processing_order.clear();
 
 	// Collect skeleton and ensure it's valid
 	Skeleton3D *skeleton = get_skeleton();
@@ -514,12 +553,21 @@ void GodotIK::initialize_chains() {
 	// Collect all nested effectors
 	Vector<Node *> child_list = get_nested_children_dsf(this);
 
+	for (GodotIKRoot *external_root : external_roots) {
+		Vector<Node *> external_child_list = get_nested_children_dsf(external_root);
+		for (Node *child : external_child_list) {
+			child_list.push_back(child);
+		}
+	}
+
 	// Process each child if child is effector
 	for (Node *child : child_list) {
 		GodotIKEffector *effector = Object::cast_to<GodotIKEffector>(child);
 		if (effector == nullptr) {
 			continue;
 		}
+		effector->set_ik_controller(this);
+
 		IKChain new_chain;
 		new_chain.effector = effector;
 
@@ -533,6 +581,7 @@ void GodotIK::initialize_chains() {
 		// add constraints to current effector
 		new_chain.constraints.resize(new_chain.bones.size());
 		new_chain.constraints.fill(nullptr);
+		int effector_pole_count = 0;
 		for (int i = 0; i < effector->get_child_count(); i++) {
 			Node *child = effector->get_child(i);
 			if (child->is_class("GodotIKConstraint")) {
@@ -551,14 +600,24 @@ void GodotIK::initialize_chains() {
 				new_chain.constraints.write[placement_in_chain] = constraint;
 				constraint->set_ik_controller(this);
 			}
+			if (child->is_class("GodotIKPole") && effector_pole_count == 0) {
+				effector->set_pole(Object::cast_to<GodotIKPole>(child));
+				effector_pole_count += 1;
+			}
 		}
-		effector->set_ik_controller(this);
+		effector->has_one_pole = effector_pole_count == 1;
+		if (effector_pole_count == 0) {
+			effector->set_pole(nullptr);
+		}
 		chains.push_back(new_chain);
 	}
 }
 
-void GodotIK::initialize_deinitialize_connections() { // TODO: rename maybe ? :D
-	Vector<Node *> child_list = get_nested_children_dsf(this); // First in, first out through iteration -> BSF
+void GodotIK::initialize_deinitialize_connections(Node *root) { // TODO: rename maybe ? :D
+	Vector<Node *> child_list = get_nested_children_dsf(root); // First in, first out through iteration -> BSF
+	if (!root->is_connected("child_order_changed", callable_deinitialize)) {
+		root->connect("child_order_changed", callable_deinitialize);
+	}
 	for (Node *child : child_list) {
 		if (!child->is_connected("child_order_changed", callable_deinitialize)) {
 			child->connect("child_order_changed", callable_deinitialize);
@@ -577,6 +636,23 @@ void GodotIK::initialize_deinitialize_connections() { // TODO: rename maybe ? :D
 			}
 		}
 	}
+}
+
+void godot::GodotIK::update_all_transforms_from_skeleton() {
+	Skeleton3D *skeleton = get_skeleton();
+	ERR_FAIL_NULL(skeleton);
+
+	initial_transforms.resize(identity_idx + 1); // +1 for identity index
+
+	for (int i = 0; i < skeleton->get_bone_count(); i++) {
+		initial_transforms.set(i, skeleton->get_bone_global_pose(i));
+	}
+	initial_transforms.set(identity_idx, Transform3D()); // buffer an identity transform
+	positions.resize(identity_idx + 1);
+	for (int i = 0; i < skeleton->get_bone_count(); i++) {
+		positions.set(i, initial_transforms[i].origin);
+	}
+	positions.set(identity_idx, Vector3());
 }
 
 void GodotIK::make_dirty() {
@@ -620,7 +696,7 @@ Vector<Node *> GodotIK::get_nested_children_dsf(Node *base) const {
 	Vector<Node *> child_list; // First in, first out through iteration -> BSF
 
 	for (int i = 0; i < base->get_child_count(); i++) {
-		child_list.push_back(get_child(i));
+		child_list.push_back(base->get_child(i));
 	}
 	for (int i = 0; i < child_list.size(); i++) {
 		Node *child = child_list[i];
@@ -636,6 +712,7 @@ void GodotIK::set_effector_transforms_to_bones() {
 	Skeleton3D *skeleton = get_skeleton();
 	if (!skeleton)
 		return;
+	initialize_if_dirty();
 	for (auto chain : chains) {
 		if (chain.bones.size() == 0)
 			continue;
@@ -665,4 +742,46 @@ void GodotIK::set_use_global_rotation_poles(bool p_use_global_rotation_poles) {
 
 bool GodotIK::get_use_global_rotation_poles() const {
 	return use_global_rotation_poles;
+}
+
+void godot::GodotIK::add_external_root(GodotIKRoot *p_root) {
+	if (this->is_ancestor_of(p_root) || p_root->is_ancestor_of(this)) {
+		print_error("GodotIK can't be ancestor of its external root or vise versa.");
+		return;
+	}
+	external_roots.push_back(p_root);
+	if (get_skeleton()) {
+		initialize_if_dirty();
+	}
+}
+
+void godot::GodotIK::remove_external_root(GodotIKRoot *p_root) {
+	external_roots.erase(p_root);
+	if (!p_root) {
+		return;
+	}
+
+	Vector<Node *> child_list = get_nested_children_dsf(p_root); // First in, first out through iteration -> BSF
+	if (p_root->is_connected("child_order_changed", callable_deinitialize)) {
+		p_root->disconnect("child_order_changed", callable_deinitialize);
+	}
+	for (Node *child : child_list) {
+		if (child->is_connected("child_order_changed", callable_deinitialize)) {
+			child->disconnect("child_order_changed", callable_deinitialize);
+		}
+		if (child->is_class("GodotIKEffector")) {
+			if (child->is_connected("bone_idx_changed", callable_deinitialize.unbind(1))) {
+				child->disconnect("bone_idx_changed", callable_deinitialize.unbind(1));
+			}
+			if (child->is_connected("chain_length_changed", callable_deinitialize.unbind(1))) {
+				child->disconnect("chain_length_changed", callable_deinitialize.unbind(1));
+			}
+		}
+		if (child->is_class("GodotIKConstraint")) {
+			if (child->is_connected("bone_idx_changed", callable_deinitialize.unbind(1))) {
+				child->disconnect("bone_idx_changed", callable_deinitialize.unbind(1));
+			}
+		}
+	}
+	make_dirty();
 }

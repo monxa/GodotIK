@@ -3,6 +3,7 @@
 
 #include "godot_ik_constraint.h"
 #include "godot_ik_effector.h"
+#include "godot_ik_root.h"
 
 #include <cstdint>
 #include <godot_cpp/classes/skeleton_modifier3d.hpp>
@@ -51,6 +52,9 @@ public:
 	void set_use_global_rotation_poles(bool p_use_global_rotation_poles);
 	bool get_use_global_rotation_poles() const;
 
+	void add_external_root(GodotIKRoot * p_root);
+	void remove_external_root(GodotIKRoot * p_root);
+
 protected:
 	static void _bind_methods();
 
@@ -58,6 +62,7 @@ private:
 	int iteration_count = 8;
 
 	bool dirty = true;
+	Vector<GodotIKRoot *> external_roots;
 	// Bone length relative to parent. Root has no bone length.
 	Vector<float> bone_lengths;
 	HashMap<int, Vector<int>> grouped_by_position;
@@ -65,36 +70,51 @@ private:
 	Vector<int> indices_by_depth;
 
 	Vector<bool> needs_processing;
-	Vector<Vector3> positions;
 	Vector<Transform3D> initial_transforms;
-	// identity_idx is used as an extra element (at index bone_count) to represent a "null" or identity transform.
-	// This extra element is initialized as follows:
-	//   needs_processing[identity_idx] = false
-	//   positions[identity_idx] = Vector3(0, 0, 0)   // or Vector3.ZERO if defined
-	//   initial_transforms[identity_idx] = Transform3D()  // or Transform3D.IDENTITY if defined
+	Vector<Vector3> positions;
+	Vector<Vector<GodotIKEffector *>> bone_effector_map;
+	/** identity_idx is used as an extra element (at index bone_count) to represent a "null" or identity transform.
+	*** This extra element is initialized as follows:
+	*** needs_processing[identity_idx] = false
+	*** positions[identity_idx] = Vector3(0, 0, 0)   // or Vector3.ZERO if defined
+	*** initial_transforms[identity_idx] = Transform3D()  // or Transform3D.IDENTITY if defined */
 	int identity_idx;
 
 	// this is mainly for compatibility with version 1.0.0:
 	bool use_global_rotation_poles = false;
-
+	
 	float time_iteration = 0.;
 	Vector<IKChain> chains;
-	Vector<Vector<int>> chain_forward_processing_order;
-
-	void initialize_if_dirty();
-	void initialize_groups();
-	void initialize_bone_lengths();
-	void initialize_chains();
-	void set_effector_transforms_to_bones();
-
-	void initialize_deinitialize_connections();
-	void make_dirty();
 	Callable callable_deinitialize;
+
+	// update ------
 
 	void solve_forward();
 	void solve_backward();
-
 	void apply_positions();
+
+	// ! update --------
+
+	// initialization ----------
+
+	// if dirty -----------
+	void initialize_if_dirty();
+	void initialize_groups();
+	void initialize_bone_lengths();
+
+	void initialize_chains();
+	void update_all_transforms_from_skeleton();
+
+	void initialize_deinitialize_connections(Node * root);
+	// ! if dirty --------
+
+	void set_effector_transforms_to_bones();
+
+	// ! initialization --------
+
+	// helpers ------
+
+	void make_dirty();
 
 	_ALWAYS_INLINE_ void apply_constraint(const IKChain &p_chain, int p_idx, GodotIKConstraint::Dir p_direction);
 
