@@ -52,6 +52,8 @@ public:
 	void set_use_global_rotation_poles(bool p_use_global_rotation_poles);
 	bool get_use_global_rotation_poles() const;
 
+	TypedArray<GodotIKEffector> get_effectors();
+
 	void add_external_root(GodotIKRoot * p_root);
 	void remove_external_root(GodotIKRoot * p_root);
 
@@ -72,6 +74,7 @@ private:
 	Vector<bool> needs_processing;
 	Vector<Transform3D> initial_transforms;
 	Vector<Vector3> positions;
+	Vector<GodotIKEffector *> effectors;
 	Vector<Vector<GodotIKEffector *>> bone_effector_map;
 	/** identity_idx is used as an extra element (at index bone_count) to represent a "null" or identity transform.
 	*** This extra element is initialized as follows:
@@ -102,10 +105,13 @@ private:
 	void initialize_groups();
 	void initialize_bone_lengths();
 
+	void initialize_effectors();
+	void set_effector_properties(GodotIKEffector * effector, GodotIK * ik_controller);
+
 	void initialize_chains();
 	void update_all_transforms_from_skeleton();
 
-	void initialize_deinitialize_connections(Node * root);
+	void initialize_connections(Node * root);
 	// ! if dirty --------
 
 	void set_effector_transforms_to_bones();

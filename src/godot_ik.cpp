@@ -35,6 +35,8 @@ void GodotIK::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::Type::BOOL, "use_global_rotation_poles"),
 			"set_use_global_rotation_poles",
 			"get_global_rotation_poles");
+
+	ClassDB::bind_method(D_METHOD("get_effectors"), &GodotIK::get_effectors);
 }
 
 void GodotIK::_notification(int p_notification) {
@@ -48,7 +50,7 @@ void GodotIK::_notification(int p_notification) {
 			Performance::get_singleton()->add_custom_monitor(name, callable_mp(this, &GodotIK::get_time_iteration));
 		}
 		if (get_skeleton()) {
-			initialize_if_dirty();
+			initialize_effectors();
 		}
 	}
 }
@@ -458,7 +460,8 @@ void GodotIK::initialize_if_dirty() {
 		indices_by_depth = indices;
 	}
 	initialize_bone_lengths();
-
+	
+	initialize_effectors();
 	initialize_chains();
 	// + 1 for identity_idx
 	needs_processing.resize(skeleton->get_bone_count() + 1);
@@ -474,9 +477,9 @@ void GodotIK::initialize_if_dirty() {
 			}
 		}
 	}
-	initialize_deinitialize_connections(this);
+	initialize_connections(this);
 	for (GodotIKRoot *ext : external_roots) {
-		initialize_deinitialize_connections(ext);
+		initialize_connections(ext);
 	}
 	identity_idx = skeleton->get_bone_count();
 
@@ -539,6 +542,46 @@ void GodotIK::initialize_bone_lengths() {
 	}
 }
 
+void godot::GodotIK::initialize_effectors() {
+	// Collect all nested effectors
+	Vector<Node *> child_list = get_nested_children_dsf(this);
+	Vector<GodotIKEffector *> new_effectors;
+	// TODO: We could do some deinitialization here
+
+	for (GodotIKRoot *external_root : external_roots) {
+		Vector<Node *> external_child_list = get_nested_children_dsf(external_root);
+		for (Node *child : external_child_list) {
+			child_list.push_back(child);
+		}
+		for (Node *child : child_list) {
+			GodotIKEffector *effector = Object::cast_to<GodotIKEffector>(child);
+			if (effector) {
+				new_effectors.push_back(effector);
+			}
+		}
+	}
+	// clean up old effectors
+	for (GodotIKEffector *effector : effectors) {
+		set_effector_properties(effector, nullptr);
+	}
+
+	for (GodotIKEffector *effector : new_effectors) {
+		set_effector_properties(effector, this);
+	}
+
+	effectors = new_effectors;
+}
+
+void godot::GodotIK::set_effector_properties(GodotIKEffector *effector, GodotIK *ik_controller) {
+	effector->set_ik_controller(this);
+	for (int i = 0; i < effector->get_child_count(); i++) {
+		GodotIKConstraint *constraint = Object::cast_to<GodotIKConstraint>(effector->get_child(i));
+		if (constraint) {
+			constraint->set_ik_controller(this);
+		}
+	}
+}
+
 void GodotIK::initialize_chains() {
 	// Ensure chains are clear for initialization
 	chains.clear();
@@ -550,24 +593,8 @@ void GodotIK::initialize_chains() {
 		return;
 	}
 
-	// Collect all nested effectors
-	Vector<Node *> child_list = get_nested_children_dsf(this);
-
-	for (GodotIKRoot *external_root : external_roots) {
-		Vector<Node *> external_child_list = get_nested_children_dsf(external_root);
-		for (Node *child : external_child_list) {
-			child_list.push_back(child);
-		}
-	}
-
 	// Process each child if child is effector
-	for (Node *child : child_list) {
-		GodotIKEffector *effector = Object::cast_to<GodotIKEffector>(child);
-		if (effector == nullptr) {
-			continue;
-		}
-		effector->set_ik_controller(this);
-
+	for (GodotIKEffector *effector : effectors) {
 		IKChain new_chain;
 		new_chain.effector = effector;
 
@@ -598,7 +625,6 @@ void GodotIK::initialize_chains() {
 					continue;
 				}
 				new_chain.constraints.write[placement_in_chain] = constraint;
-				constraint->set_ik_controller(this);
 			}
 			if (child->is_class("GodotIKPole") && effector_pole_count == 0) {
 				effector->set_pole(Object::cast_to<GodotIKPole>(child));
@@ -613,7 +639,7 @@ void GodotIK::initialize_chains() {
 	}
 }
 
-void GodotIK::initialize_deinitialize_connections(Node *root) { // TODO: rename maybe ? :D
+void GodotIK::initialize_connections(Node *root) {
 	Vector<Node *> child_list = get_nested_children_dsf(root); // First in, first out through iteration -> BSF
 	if (!root->is_connected("child_order_changed", callable_deinitialize)) {
 		root->connect("child_order_changed", callable_deinitialize);
@@ -742,6 +768,15 @@ void GodotIK::set_use_global_rotation_poles(bool p_use_global_rotation_poles) {
 
 bool GodotIK::get_use_global_rotation_poles() const {
 	return use_global_rotation_poles;
+}
+
+TypedArray<GodotIKEffector> godot::GodotIK::get_effectors() {
+	TypedArray<GodotIKEffector> result;
+	result.resize(effectors.size());
+	for (int i = 0; i < effectors.size(); i++) {
+		result[i] = effectors[i];
+	}
+	return result;
 }
 
 void godot::GodotIK::add_external_root(GodotIKRoot *p_root) {
