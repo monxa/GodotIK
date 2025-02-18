@@ -54,8 +54,8 @@ public:
 
 	TypedArray<GodotIKEffector> get_effectors();
 
-	void add_external_root(GodotIKRoot * p_root);
-	void remove_external_root(GodotIKRoot * p_root);
+	void add_external_root(GodotIKRoot *p_root);
+	void remove_external_root(GodotIKRoot *p_root);
 
 protected:
 	static void _bind_methods();
@@ -85,7 +85,7 @@ private:
 
 	// this is mainly for compatibility with version 1.0.0:
 	bool use_global_rotation_poles = false;
-	
+
 	float time_iteration = 0.;
 	Vector<IKChain> chains;
 	Callable callable_deinitialize;
@@ -106,12 +106,12 @@ private:
 	void initialize_bone_lengths();
 
 	void initialize_effectors();
-	void set_effector_properties(GodotIKEffector * effector, GodotIK * ik_controller);
+	void set_effector_properties(GodotIKEffector *effector, GodotIK *ik_controller);
 
 	void initialize_chains();
 	void update_all_transforms_from_skeleton();
 
-	void initialize_connections(Node * root);
+	void initialize_connections(Node *root);
 	// ! if dirty --------
 
 	void set_effector_transforms_to_bones();

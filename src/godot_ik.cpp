@@ -53,6 +53,12 @@ void GodotIK::_notification(int p_notification) {
 			initialize_effectors();
 		}
 	}
+	if (p_notification == NOTIFICATION_EXIT_TREE) {
+		for (GodotIKRoot *root : external_roots) {
+			root->set_ik_controller(NodePath());
+		}
+		external_roots.clear();
+	}
 }
 
 PackedStringArray GodotIK::_get_configuration_warnings() const {
@@ -460,7 +466,7 @@ void GodotIK::initialize_if_dirty() {
 		indices_by_depth = indices;
 	}
 	initialize_bone_lengths();
-	
+
 	initialize_effectors();
 	initialize_chains();
 	// + 1 for identity_idx

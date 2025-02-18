@@ -14,6 +14,11 @@ void godot::GodotIKRoot::_notification(int p_notification) {
 		}
 		ik_controller = new_ik_controller;
 	}
+	if (p_notification == NOTIFICATION_EXIT_TREE){
+		if (ik_controller){
+			ik_controller->remove_external_root(this);
+		}
+	}
 }
 
 void GodotIKRoot::set_ik_controller(const NodePath &p_ik_controller) {
