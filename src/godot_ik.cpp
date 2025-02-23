@@ -20,6 +20,8 @@ using namespace godot;
 
 // ----- Godot (Node) bindings -------
 
+static int total_instance_count = 0;
+
 void GodotIK::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_iteration_count", "iteration_count"), &GodotIK::set_iteration_count);
 	ClassDB::bind_method(D_METHOD("get_iteration_count"), &GodotIK::get_iteration_count);
@@ -45,9 +47,11 @@ void GodotIK::_notification(int p_notification) {
 		callable_deinitialize = callable_mp(this, &GodotIK::make_dirty);
 		connect("child_order_changed", callable_initialize);
 
-		StringName name = "IK/" + get_parent()->get_name();
-		if (!Performance::get_singleton()->has_custom_monitor(name)) {
-			Performance::get_singleton()->add_custom_monitor(name, callable_mp(this, &GodotIK::get_time_iteration));
+		performance_monitor_name = "IK/" + get_parent()->get_name() + " (" + Variant(total_instance_count).stringify() + ")";
+		
+		total_instance_count += 1;
+		if (!Performance::get_singleton()->has_custom_monitor(performance_monitor_name)) {
+			Performance::get_singleton()->add_custom_monitor(performance_monitor_name, callable_mp(this, &GodotIK::get_time_iteration));
 		}
 		if (get_skeleton()) {
 			initialize_effectors();
@@ -58,6 +62,9 @@ void GodotIK::_notification(int p_notification) {
 			root->set_ik_controller(NodePath());
 		}
 		external_roots.clear();
+		if (Performance::get_singleton()->has_custom_monitor(performance_monitor_name)) {
+			Performance::get_singleton()->remove_custom_monitor(performance_monitor_name);
+		}
 	}
 }
 
@@ -559,11 +566,11 @@ void godot::GodotIK::initialize_effectors() {
 		for (Node *child : external_child_list) {
 			child_list.push_back(child);
 		}
-		for (Node *child : child_list) {
-			GodotIKEffector *effector = Object::cast_to<GodotIKEffector>(child);
-			if (effector) {
-				new_effectors.push_back(effector);
-			}
+	}
+	for (Node *child : child_list) {
+		GodotIKEffector *effector = Object::cast_to<GodotIKEffector>(child);
+		if (effector) {
+			new_effectors.push_back(effector);
 		}
 	}
 	// clean up old effectors
