@@ -1,9 +1,7 @@
 #include "godot_ik.h"
 #include "godot_cpp/variant/transform3d.hpp"
 #include "godot_ik_effector.h"
-#include "godot_ik_pole.h"
 
-#include <cstdint>
 #include <godot_cpp/classes/performance.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -48,7 +46,7 @@ void GodotIK::_notification(int p_notification) {
 		connect("child_order_changed", callable_initialize);
 
 		performance_monitor_name = "IK/" + get_parent()->get_name() + " (" + Variant(total_instance_count).stringify() + ")";
-		
+
 		total_instance_count += 1;
 		if (!Performance::get_singleton()->has_custom_monitor(performance_monitor_name)) {
 			Performance::get_singleton()->add_custom_monitor(performance_monitor_name, callable_mp(this, &GodotIK::get_time_iteration));
@@ -130,6 +128,9 @@ void GodotIK::solve_backward() {
 		if (chain.bones.size() == 0) {
 			continue;
 		}
+		if (!chain.effector->is_active()) {
+			continue;
+		}
 		const int leaf_idx = 0;
 		set_position_group(chain.bones[leaf_idx], chain.effector_position);
 
@@ -142,6 +143,7 @@ void GodotIK::solve_backward() {
 			float length = bone_lengths[idx_child];
 			Vector3 pos_child = positions[idx_child];
 			Vector3 pos_bone = positions[idx_bone];
+
 			pos_bone = pos_child + pos_child.direction_to(pos_bone) * length;
 			set_position_group(idx_bone, pos_bone);
 			if (chain.constraints[i]) {
@@ -154,6 +156,9 @@ void GodotIK::solve_backward() {
 void GodotIK::solve_forward() {
 	// TODO: Introduce a depth-based chain iteration strategy (look into git history, work had already begun on this)
 	for (IKChain &chain : chains) {
+		if (!chain.effector->is_active()) {
+			continue;
+		}
 		int root_idx = chain.bones.size() - 1;
 		if (root_idx >= 0 && chain.constraints[root_idx]) {
 			apply_constraint(chain, chain.bones.size() - 1, GodotIKConstraint::Dir::FORWARD);
@@ -265,39 +270,6 @@ void GodotIK::apply_positions() {
 			new_direction = gp_transform.basis.xform_inv(new_direction);
 			additional_rotation = Quaternion(old_direction, new_direction);
 
-			{
-				GodotIKEffector::TwistMode twist_mode = GodotIKEffector::TwistMode::DYNAMIC;
-				GodotIKPole *pole = nullptr;
-				for (GodotIKEffector *effector : bone_effector_map[bone_idx]) {
-					twist_mode = MAX(twist_mode, effector->get_twist_mode());
-					if (effector->get_pole() && pole == nullptr) {
-						pole = effector->get_pole();
-					}
-				}
-				if (twist_mode == GodotIKEffector::TwistMode::PRESERVE_TWIST) {
-					Vector3 UP = old_direction;
-					Vector3 ref(-1, 0, 0);
-
-					// Rotate the reference vector.
-					Vector3 rotatedRef = additional_rotation.xform(ref);
-					if (pole) {
-						Vector3 pole_pos = skeleton->get_global_transform().affine_inverse().xform(pole->get_global_position());
-						Vector3 direction_to_pole = gp_transform.basis.xform_inv(new_parent_pos.direction_to(pole_pos));
-						rotatedRef = direction_to_pole;
-					}
-					// Project rotatedRef onto the plane perpendicular to UP and normalize.
-					rotatedRef = (rotatedRef - UP * rotatedRef.dot(UP)).normalized();
-
-					// Compute the twist angle as the signed angle between ref and rotatedRef around UP.
-					float twistAngle = atan2(UP.dot(ref.cross(rotatedRef)), ref.dot(rotatedRef));
-
-					// Construct the twist quaternion and remove it from additional_rotation.
-					Quaternion twist(UP, twistAngle);
-					additional_rotation = additional_rotation * twist.inverse();
-					Vector3 adjusted_old_direction = additional_rotation.xform(old_direction);
-					additional_rotation = additional_rotation * Quaternion(adjusted_old_direction, new_direction);
-				}
-			}
 			// Bring the rotation back into global space.
 			additional_rotation = gp_transform.basis * additional_rotation * gp_init_transform.basis.inverse();
 		}
@@ -639,15 +611,8 @@ void GodotIK::initialize_chains() {
 				}
 				new_chain.constraints.write[placement_in_chain] = constraint;
 			}
-			if (child->is_class("GodotIKPole") && effector_pole_count == 0) {
-				effector->set_pole(Object::cast_to<GodotIKPole>(child));
-				effector_pole_count += 1;
-			}
 		}
 		effector->has_one_pole = effector_pole_count == 1;
-		if (effector_pole_count == 0) {
-			effector->set_pole(nullptr);
-		}
 		chains.push_back(new_chain);
 	}
 }

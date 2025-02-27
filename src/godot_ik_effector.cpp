@@ -17,10 +17,6 @@ void GodotIKEffector::_bind_methods() {
 	BIND_ENUM_CONSTANT(STRAIGHTEN_CHAIN);
 	BIND_ENUM_CONSTANT(FULL_TRANSFORM);
 
-	// TwistMode
-	BIND_ENUM_CONSTANT(DYNAMIC);
-	BIND_ENUM_CONSTANT(PRESERVE_TWIST);
-
 	ClassDB::bind_method(D_METHOD("set_bone_idx", "bone_idx"), &GodotIKEffector::set_bone_idx);
 	ClassDB::bind_method(D_METHOD("get_bone_idx"), &GodotIKEffector::get_bone_idx);
 	ADD_PROPERTY(PropertyInfo(Variant::Type::INT, "bone_idx"), "set_bone_idx", "get_bone_idx");
@@ -33,9 +29,9 @@ void GodotIKEffector::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_transform_mode"), &GodotIKEffector::get_transform_mode);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "transform_mode", PROPERTY_HINT_ENUM, "Position Only, Preserve Rotation, Straighten Chain, Full Transform"), "set_transform_mode", "get_transform_mode");
 
-	ClassDB::bind_method(D_METHOD("set_twist_mode", "twist_mode"), &GodotIKEffector::set_twist_mode);
-	ClassDB::bind_method(D_METHOD("get_twist_mode"), &GodotIKEffector::get_twist_mode);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "twist_mode", PROPERTY_HINT_ENUM, "Dynamic, Preserve Twist"), "set_twist_mode", "get_twist_mode");
+	ClassDB::bind_method(D_METHOD("set_active", "active"), &GodotIKEffector::set_active);
+	ClassDB::bind_method(D_METHOD("is_active"), &GodotIKEffector::is_active);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "active"), "set_active", "is_active");
 
 	ADD_SIGNAL(MethodInfo("bone_idx_changed", PropertyInfo(Variant::Type::INT, "bone_idx")));
 	ADD_SIGNAL(MethodInfo("chain_length_changed", PropertyInfo(Variant::Type::INT, "chain_length")));
@@ -79,15 +75,6 @@ void GodotIKEffector::set_transform_mode(TransformMode p_transform_mode) {
 	transform_mode = p_transform_mode;
 }
 
-void godot::GodotIKEffector::set_twist_mode(TwistMode p_twist_mode) {
-	twist_mode = p_twist_mode;
-	update_configuration_warnings();
-}
-
-GodotIKEffector::TwistMode godot::GodotIKEffector::get_twist_mode() const {
-	return twist_mode;
-}
-
 void GodotIKEffector::set_ik_controller(GodotIK *p_ik_controller) {
 	ik_controller = p_ik_controller;
 }
@@ -103,21 +90,18 @@ Skeleton3D *GodotIKEffector::get_skeleton() const {
 	return ik_controller->get_skeleton();
 }
 
+void godot::GodotIKEffector::set_active(bool p_active) {
+	active = p_active;
+}
+
+bool godot::GodotIKEffector::is_active() const {
+	return active;
+}
+
 PackedStringArray godot::GodotIKEffector::_get_configuration_warnings() const {
 	PackedStringArray result;
-	if (get_ik_controller() == nullptr){
+	if (get_ik_controller() == nullptr) {
 		result.push_back("Needs to be parented by a GodotIK node. Can be nested.");
 	}
-	if (get_twist_mode() == TwistMode::PRESERVE_TWIST && !has_one_pole){
-		result.push_back("Exactly one GodotIKPole child required when using twist_mode = PRESERVE_TWIST for stable twisting.");
-	}
 	return result;
-}
-
-GodotIKPole *godot::GodotIKEffector::get_pole() {
-	return pole;
-}
-
-void godot::GodotIKEffector::set_pole(GodotIKPole *p_pole) {
-	pole = p_pole;
 }
