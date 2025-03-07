@@ -4,7 +4,7 @@
 
 > I needed IK. People said IK was hard. I did it anyway.
 
-This project provides three classes:
+This project provides four classes:
 
 - **`GodotIK`**  
   A `SkeletonModifier` that does all the magic.
@@ -15,6 +15,8 @@ This project provides three classes:
 - **`GodotIKConstraint`**  
   An abstract class that is parented by `GodotIKEffector`s. Two examples are provided as GDScript implementations: `PoleConstraint` and `StraightBoneConstraint`.
 
+- **`GodotIKRoot`**
+  An alternative root node, under which effectors and constraints can be placed. Links into `GodotIK` through a `Nodepath` refernce.
 This is the best implementation I could come up with. It's stable—at least as stable as it gets with constraints.
 
 For further reference, check out the `doc_classes/` directory; it tells it all.
