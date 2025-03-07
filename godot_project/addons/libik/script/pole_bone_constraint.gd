@@ -1,9 +1,20 @@
 @tool
 class_name PoleBoneConstraint extends GodotIKConstraint
+## Applies a pole vector constraint to an IK bone chain.
+##
+## This constraint ensures that the mid-bone follows a specific pole direction,
+## controlling the plane in which the chain bends.
+
+## Whether the constraint is currently active.
 @export var active : bool = true
 
+## The pole direction vector that influences the bending plane.
 @export var pole_direction : Vector3
+
+## If true, the constraint applies when the IK chain moves forward.
 @export var forward : bool = true
+
+## If true, the constraint applies when the IK chain moves backward.
 @export var backward : bool = true
 
 func apply(
