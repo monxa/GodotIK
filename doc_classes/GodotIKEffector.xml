@@ -4,7 +4,7 @@
 		Defines a single IK chain and positions its end point.
 	</brief_description>
 	<description>
-		GodotIKEffector defines an IK chain by specifying which bone to control and the number of bones included in the chain. It sets the target position (and optionally rotation and scale) for the chain's end point. This node should be a (nested) child of a [GodotIK] node. Additionally, direct child nodes of type [GodotIKConstraint] can be added to impose constraints.
+		GodotIKEffector defines an IK chain by specifying which bone to control and the number of bones included in the chain. It sets the target position (and optionally rotation and scale) for the chain's end point. This node should be a (nested) child of a [GodotIK] node. Additionally, direct child nodes of type [GodotIKConstraint] can be added to impose constraints on the chain.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -23,6 +23,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="active" type="bool" setter="set_active" getter="is_active" default="true">
+			Determines whether the effector is active. If set to false, the effector is ignored during the IK solving process.
+		</member>
 		<member name="bone_idx" type="int" setter="set_bone_idx" getter="get_bone_idx" default="0">
 			The index of the bone that this effector controls in the skeleton.
 		</member>
@@ -30,9 +33,7 @@
 			The number of bones in the IK chain influenced by this effector.
 		</member>
 		<member name="transform_mode" type="int" setter="set_transform_mode" getter="get_transform_mode" enum="GodotIKEffector.TransformMode" default="0">
-			Determines how the end bone's transform is applied based on [enum TransformMode].
-		</member>
-		<member name="twist_mode" type="int" setter="set_twist_mode" getter="get_twist_mode" enum="GodotIKEffector.TwistMode" default="0">
+			Determines how the end bone's transform is applied based on the [enum TransformMode]. Options include updating only the position, preserving rotation, straightening the chain, or applying the full transform.
 		</member>
 	</members>
 	<signals>
@@ -60,11 +61,7 @@
 			Positions the target bone and straightens the chain by adjusting its rotation relative to the parent.
 		</constant>
 		<constant name="FULL_TRANSFORM" value="3" enum="TransformMode">
-			Applies the full transform of the IKEffector node - position, rotation, and scale-to the target bone.
-		</constant>
-		<constant name="DYNAMIC" value="0" enum="TwistMode">
-		</constant>
-		<constant name="PRESERVE_TWIST" value="1" enum="TwistMode">
+			Applies the full transform of the IKEffector node — position, rotation, and scale — to the target bone.
 		</constant>
 	</constants>
 </class>

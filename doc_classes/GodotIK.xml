@@ -4,7 +4,12 @@
 		Provides an efficient inverse kinematics solver for 3D skeletal animations.
 	</brief_description>
 	<description>
-		GodotIK is a high-performance inverse kinematics (IK) solver for 3D skeletons. It extends SkeletonModifier3D and uses the FABRIK algorithm to adjust bone positions and rotations, creating natural movement and smooth transitions. Developers can customize the IK process - for example, by changing the number of iterations - to balance accuracy and performance. GodotIK should have one or more [GodotIKEffector] children.
+		GodotIK is a high-performance inverse kinematics (IK) solver for 3D skeletons. It extends [SkeletonModifier3D] and uses the FABRIK algorithm to adjust bone positions and rotations, creating natural movement and smooth transitions. Developers can customize the IK process — for example, by changing the number of iterations — to balance accuracy and performance. GodotIK should have one or more [GodotIKEffector] children to define IK chains.
+		[b]Configuration overview[/b]
+		- Central Controller: GodotIK serves as the primary IK controller to adjust the skeleton. As a [SkeletonModifier3D], it must be placed directly below a [Skeleton3D] to influence it.
+		- Nested Effectors: GodotIK can contain nested [GodotIKEffector] nodes, each defining an IK chain.
+		- Effector Constraints: [GodotIKEffector] nodes may have direct children that extend [GodotIKConstraint], allowing you to impose additional, scriptable constraints.
+		- [GodotIKRoot]: [GodotIKRoot]s search for effectors across their children and links them into the GodotIK system, making it easier to organize effectors across complex scenes.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -13,6 +18,13 @@
 			<return type="Vector3" />
 			<param index="0" name="bone_idx" type="int" />
 			<description>
+				Returns the skeleton-local - solver-immediate - position of a bone with [param bone_idx] in the skeleton. This is particularly relevant for most complex constraints.
+			</description>
+		</method>
+		<method name="get_effectors">
+			<return type="GodotIKEffector[]" />
+			<description>
+				Returns all recognized [GodotIKEffectors] nodes.
 			</description>
 		</method>
 		<method name="set_effector_transforms_to_bones">
