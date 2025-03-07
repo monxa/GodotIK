@@ -3,11 +3,13 @@
 	<brief_description>
 	</brief_description>
 	<description>
+	Serves as an alternative root node for nested effectors (and constraints).
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="ik_controller" type="NodePath" setter="set_ik_controller" getter="get_ik_controller" default="NodePath(&quot;&quot;)">
+		The referenced IK controller. Needs to be set to a valid [GodotIK] node to update it with this [GodotIKRoot]s own children.
 		</member>
 	</members>
 </class>
