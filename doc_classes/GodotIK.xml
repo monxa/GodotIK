@@ -21,6 +21,13 @@
 				Returns the skeleton-local - solver-immediate - position of a bone with [param bone_idx] in the skeleton. This is particularly relevant for most complex constraints.
 			</description>
 		</method>
+		<method name="get_current_iteration">
+			<return type="int" />
+			<description>
+				Returns the current iteration index of the solver if it is actively solving the IK configuration. If the solver is not running at the time of calling, this returns -1.
+				This can be useful for scriptable constraints that need to adapt based on the solver’s progress.
+			</description>
+		</method>
 		<method name="get_effectors">
 			<return type="GodotIKEffector[]" />
 			<description>

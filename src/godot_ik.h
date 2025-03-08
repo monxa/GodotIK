@@ -53,16 +53,19 @@ public:
 	bool get_use_global_rotation_poles() const;
 
 	TypedArray<GodotIKEffector> get_effectors();
+	
+	int get_current_iteration();
 
 	void add_external_root(GodotIKRoot *p_root);
 	void remove_external_root(GodotIKRoot *p_root);
+
 
 protected:
 	static void _bind_methods();
 
 private:
 	int iteration_count = 8;
-
+	int current_iteration = -1;
 	bool dirty = true;
 	Vector<GodotIKRoot *> external_roots;
 	// Bone length relative to parent. Root has no bone length.
@@ -99,7 +102,7 @@ private:
 
 	// ! update --------
 
-	// initialization ----------
+	// initialization -----------------------------
 
 	// if dirty -----------
 	void initialize_if_dirty();
@@ -117,7 +120,7 @@ private:
 
 	void set_effector_transforms_to_bones();
 
-	// ! initialization --------
+	// ! initialization ------------------------------
 
 	// helpers ------
 

@@ -37,6 +37,8 @@ void GodotIK::_bind_methods() {
 			"get_global_rotation_poles");
 
 	ClassDB::bind_method(D_METHOD("get_effectors"), &GodotIK::get_effectors);
+
+	ClassDB::bind_method(D_METHOD("get_current_iteration"), &GodotIK::get_current_iteration);
 }
 
 void GodotIK::_notification(int p_notification) {
@@ -103,11 +105,13 @@ void GodotIK::_process_modification() {
 		chain.effector_position = skeleton->to_local(chain.effector->get_global_position());
 	}
 
-	for (int i = 0; i < iteration_count; i++) {
+	for (current_iteration = 0; current_iteration < iteration_count; current_iteration++) {
 		solve_backward();
 		solve_forward();
 	}
 	apply_positions();
+	
+	current_iteration = -1;
 
 	float t2 = Time::get_singleton()->get_ticks_usec();
 	time_iteration = (t2 - t1);
@@ -755,6 +759,10 @@ TypedArray<GodotIKEffector> godot::GodotIK::get_effectors() {
 		result[i] = effectors[i];
 	}
 	return result;
+}
+
+int godot::GodotIK::get_current_iteration() {
+	return current_iteration;
 }
 
 void godot::GodotIK::add_external_root(GodotIKRoot *p_root) {
