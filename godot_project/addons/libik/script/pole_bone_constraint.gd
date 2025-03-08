@@ -24,7 +24,6 @@ func apply(
 		chain_dir : Dir
 	) -> PackedVector3Array:
 	var result : PackedVector3Array = [pos_parent_bone, pos_bone, pos_child_bone]
-
 	if not active:
 		return result
 	if chain_dir == Dir.FORWARD and not forward:
