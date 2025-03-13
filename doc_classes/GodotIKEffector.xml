@@ -29,6 +29,9 @@
 		<member name="bone_idx" type="int" setter="set_bone_idx" getter="get_bone_idx" default="0">
 			The index of the bone that this effector controls in the skeleton.
 		</member>
+		<member name="bone_name" type="String" setter="set_bone_name" getter="get_bone_name" default="&quot;&quot;">
+			The name of the bone that this effector influences. This should correspond to a bone name in the associated Skeleton3D node.
+		</member>
 		<member name="chain_length" type="int" setter="set_chain_length" getter="get_chain_length" default="2">
 			The number of bones in the IK chain influenced by this effector.
 		</member>
