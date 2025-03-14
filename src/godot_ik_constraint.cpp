@@ -5,7 +5,7 @@
 
 using namespace godot;
 
-void godot::GodotIKConstraint::_bind_methods() {
+void GodotIKConstraint::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_name"), &GodotIKConstraint::get_bone_name);
 	ClassDB::bind_method(D_METHOD("set_bone_name", "bone_name"), &GodotIKConstraint::set_bone_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "bone_name"), "set_bone_name", "get_bone_name");
@@ -36,7 +36,7 @@ PackedVector3Array GodotIKConstraint::apply(Vector3 p_pos_parent_bone, Vector3 p
 	return result;
 }
 
-void godot::GodotIKConstraint::_validate_property(PropertyInfo &p_property) const {
+void GodotIKConstraint::_validate_property(PropertyInfo &p_property) const {
 	if (p_property.name == StringName("bone_name")) {
 		Skeleton3D *skeleton = get_skeleton();
 		if (skeleton) {
@@ -86,15 +86,15 @@ void GodotIKConstraint::set_bone_idx(int p_bone_idx) {
 	}
 }
 
-void godot::GodotIKConstraint::set_ik_controller(GodotIK *p_ik_controller) {
+void GodotIKConstraint::set_ik_controller(GodotIK *p_ik_controller) {
 	ik_controller = p_ik_controller;
 }
 
-GodotIK *godot::GodotIKConstraint::get_ik_controller() const {
+GodotIK *GodotIKConstraint::get_ik_controller() const {
 	return ik_controller;
 }
 
-Skeleton3D *godot::GodotIKConstraint::get_skeleton() const {
+Skeleton3D *GodotIKConstraint::get_skeleton() const {
 	if (!ik_controller) {
 		return nullptr;
 	}

@@ -531,7 +531,7 @@ void GodotIK::initialize_bone_lengths() {
 	}
 }
 
-void godot::GodotIK::initialize_effectors() {
+void GodotIK::initialize_effectors() {
 	// Collect all nested effectors
 	Vector<Node *> child_list = get_nested_children_dsf(this);
 	Vector<GodotIKEffector *> new_effectors;
@@ -561,7 +561,7 @@ void godot::GodotIK::initialize_effectors() {
 	effectors = new_effectors;
 }
 
-void godot::GodotIK::set_effector_properties(GodotIKEffector *effector, GodotIK *ik_controller) {
+void GodotIK::set_effector_properties(GodotIKEffector *effector, GodotIK *ik_controller) {
 	effector->set_ik_controller(this);
 	for (int i = 0; i < effector->get_child_count(); i++) {
 		GodotIKConstraint *constraint = Object::cast_to<GodotIKConstraint>(effector->get_child(i));
@@ -646,7 +646,7 @@ void GodotIK::initialize_connections(Node *root) {
 	}
 }
 
-void godot::GodotIK::update_all_transforms_from_skeleton() {
+void GodotIK::update_all_transforms_from_skeleton() {
 	Skeleton3D *skeleton = get_skeleton();
 	ERR_FAIL_NULL(skeleton);
 
@@ -752,7 +752,7 @@ bool GodotIK::get_use_global_rotation_poles() const {
 	return use_global_rotation_poles;
 }
 
-TypedArray<GodotIKEffector> godot::GodotIK::get_effectors() {
+TypedArray<GodotIKEffector> GodotIK::get_effectors() {
 	TypedArray<GodotIKEffector> result;
 	result.resize(effectors.size());
 	for (int i = 0; i < effectors.size(); i++) {
@@ -761,11 +761,11 @@ TypedArray<GodotIKEffector> godot::GodotIK::get_effectors() {
 	return result;
 }
 
-int godot::GodotIK::get_current_iteration() {
+int GodotIK::get_current_iteration() {
 	return current_iteration;
 }
 
-void godot::GodotIK::add_external_root(GodotIKRoot *p_root) {
+void GodotIK::add_external_root(GodotIKRoot *p_root) {
 	if (this->is_ancestor_of(p_root) || p_root->is_ancestor_of(this)) {
 		print_error("GodotIK can't be ancestor of its external root or vise versa.");
 		return;
@@ -776,7 +776,7 @@ void godot::GodotIK::add_external_root(GodotIKRoot *p_root) {
 	}
 }
 
-void godot::GodotIK::remove_external_root(GodotIKRoot *p_root) {
+void GodotIK::remove_external_root(GodotIKRoot *p_root) {
 	external_roots.erase(p_root);
 	if (!p_root) {
 		return;
