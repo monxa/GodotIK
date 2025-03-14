@@ -129,15 +129,15 @@ Skeleton3D *GodotIKEffector::get_skeleton() const {
 	return ik_controller->get_skeleton();
 }
 
-void godot::GodotIKEffector::set_active(bool p_active) {
+void GodotIKEffector::set_active(bool p_active) {
 	active = p_active;
 }
 
-bool godot::GodotIKEffector::is_active() const {
+bool GodotIKEffector::is_active() const {
 	return active;
 }
 
-PackedStringArray godot::GodotIKEffector::_get_configuration_warnings() const {
+PackedStringArray GodotIKEffector::_get_configuration_warnings() const {
 	PackedStringArray result;
 	if (get_ik_controller() == nullptr) {
 		result.push_back("Needs to be parented by a GodotIK node. Can be nested.");
