@@ -9,6 +9,9 @@ The following files contain code derived from the Godot Engine:
 
 - **src/GodotIKEffector.h**
 - **src/GodotIKEffector.cpp**
+- **src/GodotIKConstraint.h**
+- **src/GodotIKConstraint.cpp**
+
 
 #### Relevant Functions:
 - `get_bone_name`
