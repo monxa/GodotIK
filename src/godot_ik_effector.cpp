@@ -2,10 +2,10 @@
 #include "godot_ik.h"
 
 #include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/godot.hpp>
-#include <godot_cpp/classes/skeleton3d.hpp>
 
 using namespace godot;
 
@@ -36,8 +36,11 @@ void GodotIKEffector::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_active"), &GodotIKEffector::is_active);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "active"), "set_active", "is_active");
 
-	ADD_SIGNAL(MethodInfo("bone_idx_changed", PropertyInfo(Variant::Type::INT, "bone_idx")));
-	ADD_SIGNAL(MethodInfo("chain_length_changed", PropertyInfo(Variant::Type::INT, "chain_length")));
+	ClassDB::bind_method(D_METHOD("set_influence", "influence"), &GodotIKEffector::set_influence);
+	ClassDB::bind_method(D_METHOD("get_influence"), &GodotIKEffector::get_influence);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "influence", PROPERTY_HINT_RANGE, "0,1,0.001"), "set_influence", "get_influence");
+
+	ADD_SIGNAL(MethodInfo("ik_property_changed"));
 
 	ClassDB::bind_method(D_METHOD("get_skeleton"), &GodotIKEffector::get_skeleton);
 
@@ -90,7 +93,7 @@ void GodotIKEffector::set_bone_idx(int p_bone_idx) {
 	}
 
 	if (prev_bone_idx != bone_idx) {
-		emit_signal("bone_idx_changed", bone_idx);
+		emit_signal("ik_property_changed");
 	}
 }
 
@@ -99,10 +102,10 @@ int GodotIKEffector::get_chain_length() const {
 }
 
 void GodotIKEffector::set_chain_length(int p_chain_length) {
-	int prev_chain_length = chain_length;
+	bool changed = p_chain_length != chain_length;
 	chain_length = p_chain_length;
-	if (prev_chain_length != chain_length) {
-		emit_signal("chain_length_changed", chain_length);
+	if (changed) {
+		emit_signal("ik_property_changed");
 	}
 }
 
@@ -135,6 +138,15 @@ void GodotIKEffector::set_active(bool p_active) {
 
 bool GodotIKEffector::is_active() const {
 	return active;
+}
+
+void GodotIKEffector::set_influence(float p_influence) {
+	bool changed = influence != p_influence;
+	influence = p_influence;
+}
+
+float godot::GodotIKEffector::get_influence() const {
+	return influence;
 }
 
 PackedStringArray GodotIKEffector::_get_configuration_warnings() const {
