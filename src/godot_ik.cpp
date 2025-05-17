@@ -110,7 +110,7 @@ void GodotIK::_process_modification() {
 		solve_forward();
 	}
 	apply_positions();
-	
+
 	current_iteration = -1;
 
 	float t2 = Time::get_singleton()->get_ticks_usec();
@@ -274,8 +274,15 @@ void GodotIK::apply_positions() {
 			new_direction = gp_transform.basis.xform_inv(new_direction);
 			additional_rotation = Quaternion(old_direction, new_direction);
 
+			Basis additional_rotation_as_basis =  gp_transform.basis * additional_rotation * gp_init_transform.basis.inverse();
+
 			// Bring the rotation back into global space.
-			additional_rotation = gp_transform.basis * additional_rotation * gp_init_transform.basis.inverse();
+			if (additional_rotation_as_basis != Basis(Vector3(0, 0, 0), Vector3(0,0,0), Vector3(0,0,0))){
+                additional_rotation = additional_rotation_as_basis;
+			}
+			else { // Hopefully addresses https://github.com/monxa/GodotIK/issues/56
+                additional_rotation = Quaternion();
+			}
 		}
 
 		// Update the parent's transform with the computed rotation.
