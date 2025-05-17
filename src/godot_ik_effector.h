@@ -40,6 +40,9 @@ public:
 	void set_active(bool p_active);
 	bool is_active() const;
 
+	void set_influence(float p_influence);
+	float get_influence() const;
+
 	PackedStringArray _get_configuration_warnings() const override;
 
 protected:
@@ -53,6 +56,7 @@ private:
 	int chain_length = 2;
 	TransformMode transform_mode = TransformMode::POSITION_ONLY;
 	GodotIK *ik_controller = nullptr;
+	float influence = 1.;
 	bool active = true;
 }; // ! class GodotIKEffector
 } //namespace godot

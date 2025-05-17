@@ -45,7 +45,7 @@
 		<member name="iteration_count" type="int" setter="set_iteration_count" getter="get_iteration_count" default="8">
 			Sets the number of iterations during the IK solving process. Higher values provide more accurate results but may reduce performance, while lower values improve speed with less precision.
 		</member>
-		<member name="use_global_rotation_poles" type="bool" setter="set_use_global_rotation_poles" getter="get_global_rotation_poles" default="false">
+		<member name="use_global_rotation_poles" type="bool" setter="set_use_global_rotation_poles" getter="get_global_rotation_poles" default="false" deprecated="">
 			Maintained primarily for backwards compatibility. When enabled, global rotation poles are used as references for rotation adjustments instead of local ones.
 			See: [url]https://github.com/monxa/GodotIK/issues/26#issuecomment-2650330652[/url].
 		</member>

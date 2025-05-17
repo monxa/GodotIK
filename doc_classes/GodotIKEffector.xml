@@ -35,21 +35,17 @@
 		<member name="chain_length" type="int" setter="set_chain_length" getter="get_chain_length" default="2">
 			The number of bones in the IK chain influenced by this effector.
 		</member>
+		<member name="influence" type="float" setter="set_influence" getter="get_influence" default="1.0" experimental="">
+			Determines the influence of a single effector.
+		</member>
 		<member name="transform_mode" type="int" setter="set_transform_mode" getter="get_transform_mode" enum="GodotIKEffector.TransformMode" default="0">
 			Determines how the end bone's transform is applied based on the [enum TransformMode]. Options include updating only the position, preserving rotation, straightening the chain, or applying the full transform.
 		</member>
 	</members>
 	<signals>
-		<signal name="bone_idx_changed">
-			<param index="0" name="bone_idx" type="int" />
+		<signal name="ik_property_changed">
 			<description>
-				Emitted when the [member bone_idx] value changes.
-			</description>
-		</signal>
-		<signal name="chain_length_changed">
-			<param index="0" name="chain_length" type="int" />
-			<description>
-				Emitted when the [member chain_length] value changes.
+				Emitted when a solver-relevant property changes.
 			</description>
 		</signal>
 	</signals>
