@@ -5,7 +5,6 @@
 #include "godot_ik_effector.h"
 #include "godot_ik_root.h"
 
-#include <cstdint>
 #include <godot_cpp/classes/skeleton_modifier3d.hpp>
 #include <godot_cpp/classes/wrapped.hpp>
 #include <godot_cpp/core/defs.hpp>
@@ -53,7 +52,7 @@ public:
 	bool get_use_global_rotation_poles() const;
 
 	TypedArray<GodotIKEffector> get_effectors();
-	
+
 	int get_current_iteration();
 
 	void add_external_root(GodotIKRoot *p_root);
@@ -115,10 +114,9 @@ private:
 	void initialize_chains();
 	void update_all_transforms_from_skeleton();
 
-	void initialize_connections(Node *root);
+	void initialize_connections(Node *p_root);
 	// ! if dirty --------
 
-	void set_effector_transforms_to_bones();
 
 	// ! initialization ------------------------------
 
@@ -130,8 +128,10 @@ private:
 
 	Vector<int> calculate_bone_depths(Skeleton3D *p_skeleton);
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
+	Vector<Node *> get_nested_children_dsf(Node *p_base) const;
+	float compute_constraint_step_influence(float total_influence, int iteration_count);
+	void set_effector_transforms_to_bones();
 
-	Vector<Node *> get_nested_children_dsf(Node *base) const;
 
 }; // ! class GodotIK
 

@@ -1,5 +1,5 @@
 #include "godot_ik.h"
-#include "godot_cpp/variant/transform3d.hpp"
+#include "godot_cpp/core/error_macros.hpp"
 #include "godot_ik_effector.h"
 
 #include <godot_cpp/classes/performance.hpp>
@@ -12,6 +12,7 @@
 #include <godot_cpp/templates/pair.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
@@ -103,6 +104,15 @@ void GodotIK::_process_modification() {
 			return;
 		}
 		chain.effector_position = skeleton->to_local(chain.effector->get_global_position());
+
+		// see https://github.com/monxa/GodotIK/issues/52
+		float influence = chain.effector->get_influence();
+
+		int bone_idx = chain.effector->get_bone_idx();
+		if (chain.effector->is_active() && influence < 1. && bone_idx >= 0 && bone_idx < initial_transforms.size()) {
+			Vector3 global_pose_pos = initial_transforms[bone_idx].origin;
+			chain.effector_position = global_pose_pos.lerp(chain.effector_position, influence);
+		}
 	}
 
 	for (current_iteration = 0; current_iteration < iteration_count; current_iteration++) {
@@ -110,7 +120,7 @@ void GodotIK::_process_modification() {
 		solve_forward();
 	}
 	apply_positions();
-	
+
 	current_iteration = -1;
 
 	float t2 = Time::get_singleton()->get_ticks_usec();
@@ -129,7 +139,7 @@ void GodotIK::set_position_group(int p_idx_bone_in_group, const Vector3 &p_pos_b
 void GodotIK::solve_backward() {
 	// TODO: Introduce a depth-based chain iteration strategy (look into git history, work had already begun on this)
 	for (IKChain &chain : chains) {
-		if (chain.bones.size() == 0) {
+		if (chain.bones.size() == 0 || chain.effector->get_influence() == 0.) {
 			continue;
 		}
 		if (!chain.effector->is_active()) {
@@ -160,7 +170,7 @@ void GodotIK::solve_backward() {
 void GodotIK::solve_forward() {
 	// TODO: Introduce a depth-based chain iteration strategy (look into git history, work had already begun on this)
 	for (IKChain &chain : chains) {
-		if (!chain.effector->is_active()) {
+		if (!chain.effector->is_active() || chain.effector->get_influence() == 0.) {
 			continue;
 		}
 		int root_idx = chain.bones.size() - 1;
@@ -372,6 +382,9 @@ void GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, Godot
 	if (constraint == nullptr) {
 		return;
 	}
+
+	float influence = compute_constraint_step_influence(p_chain.effector->get_influence(), iteration_count);
+
 	int idx_bone = p_chain.bones[p_idx_in_chain];
 	int idx_child = -1;
 	int idx_parent = -1;
@@ -396,6 +409,13 @@ void GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, Godot
 	}
 
 	PackedVector3Array result = constraint->apply(pos_parent, pos_bone, pos_child, p_dir);
+
+	if (influence < 1. && result.size() == 3) {
+		PackedVector3Array base = { pos_parent, pos_bone, pos_child };
+		for (int i = 0; i < 3; i++) {
+			result[i] = base[i].lerp(result[i], influence); // TODO: Suboptimal since dependent on iteration count.
+		}
+	}
 
 	if (idx_parent != -1 && pos_parent != result[0]) {
 		set_position_group(idx_parent, result[0]);
@@ -428,9 +448,8 @@ void GodotIK::initialize_if_dirty() {
 	bone_depths = calculate_bone_depths(skeleton);
 	{ // Indices by depth creation.
 		Vector<int> indices;
-		Vector depths = bone_depths;
-		indices.resize(depths.size());
-		for (int i = 0; i < depths.size(); i++) {
+		indices.resize(bone_depths.size());
+		for (int i = 0; i < bone_depths.size(); i++) {
 			indices.write[i] = i;
 		}
 
@@ -445,7 +464,7 @@ void GodotIK::initialize_if_dirty() {
 			}
 		};
 
-		indices.sort_custom<DepthComparator>(DepthComparator(depths));
+		indices.sort_custom<DepthComparator>(DepthComparator(bone_depths));
 		indices_by_depth = indices;
 	}
 	initialize_bone_lengths();
@@ -621,21 +640,18 @@ void GodotIK::initialize_chains() {
 	}
 }
 
-void GodotIK::initialize_connections(Node *root) {
-	Vector<Node *> child_list = get_nested_children_dsf(root); // First in, first out through iteration -> BSF
-	if (!root->is_connected("child_order_changed", callable_deinitialize)) {
-		root->connect("child_order_changed", callable_deinitialize);
+void GodotIK::initialize_connections(Node *p_root) {
+	Vector<Node *> child_list = get_nested_children_dsf(p_root); // First in, first out through iteration -> BSF
+	if (!p_root->is_connected("child_order_changed", callable_deinitialize)) {
+		p_root->connect("child_order_changed", callable_deinitialize);
 	}
 	for (Node *child : child_list) {
 		if (!child->is_connected("child_order_changed", callable_deinitialize)) {
 			child->connect("child_order_changed", callable_deinitialize);
 		}
 		if (child->is_class("GodotIKEffector")) {
-			if (!child->is_connected("bone_idx_changed", callable_deinitialize.unbind(1))) {
-				child->connect("bone_idx_changed", callable_deinitialize.unbind(1));
-			}
-			if (!child->is_connected("chain_length_changed", callable_deinitialize.unbind(1))) {
-				child->connect("chain_length_changed", callable_deinitialize.unbind(1));
+			if (!child->is_connected("ik_property_changed", callable_deinitialize.unbind(1))) {
+				child->connect("ik_property_changed", callable_deinitialize);
 			}
 		}
 		if (child->is_class("GodotIKConstraint")) {
@@ -715,6 +731,15 @@ Vector<Node *> GodotIK::get_nested_children_dsf(Node *base) const {
 	return child_list;
 }
 
+// Computes the per-iteration influence step to reach a total influence after N iterations
+float GodotIK::compute_constraint_step_influence(float total_influence, int iteration_count) {
+    if (total_influence == 0 || total_influence == 1. || iteration_count == 0){
+        return total_influence;
+    }
+
+	return 1.0f - powf(1.0f - total_influence, 1.0f / float(iteration_count));
+}
+
 // For editor tooling:
 void GodotIK::set_effector_transforms_to_bones() {
 	Skeleton3D *skeleton = get_skeleton();
@@ -791,11 +816,8 @@ void GodotIK::remove_external_root(GodotIKRoot *p_root) {
 			child->disconnect("child_order_changed", callable_deinitialize);
 		}
 		if (child->is_class("GodotIKEffector")) {
-			if (child->is_connected("bone_idx_changed", callable_deinitialize.unbind(1))) {
-				child->disconnect("bone_idx_changed", callable_deinitialize.unbind(1));
-			}
-			if (child->is_connected("chain_length_changed", callable_deinitialize.unbind(1))) {
-				child->disconnect("chain_length_changed", callable_deinitialize.unbind(1));
+			if (child->is_connected("ik_property_changed", callable_deinitialize)) {
+				child->disconnect("ik_property_changed", callable_deinitialize);
 			}
 		}
 		if (child->is_class("GodotIKConstraint")) {
