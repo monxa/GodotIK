@@ -21,6 +21,12 @@
 				Returns the Skeleton3D instance from the associated IK controller, or null if no IK controller is set.
 			</description>
 		</method>
+		<method name="set_transform_to_bone">
+			<return type="void" />
+			<description>
+			Sets the [transform] to the [b]current pose[/b] of the bone in the skeleton. Transform is in [Skeleton3D] local space.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="active" type="bool" setter="set_active" getter="is_active" default="true">

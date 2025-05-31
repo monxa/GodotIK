@@ -58,6 +58,7 @@ public:
 	void add_external_root(GodotIKRoot *p_root);
 	void remove_external_root(GodotIKRoot *p_root);
 
+	void set_effector_transforms_to_bones();
 
 protected:
 	static void _bind_methods();
@@ -117,7 +118,6 @@ private:
 	void initialize_connections(Node *p_root);
 	// ! if dirty --------
 
-
 	// ! initialization ------------------------------
 
 	// helpers ------
@@ -130,9 +130,6 @@ private:
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
 	Vector<Node *> get_nested_children_dsf(Node *p_base) const;
 	float compute_constraint_step_influence(float total_influence, int iteration_count);
-	void set_effector_transforms_to_bones();
-
-
 }; // ! class GodotIK
 
 } // namespace godot

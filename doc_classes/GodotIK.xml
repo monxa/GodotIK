@@ -37,7 +37,8 @@
 		<method name="set_effector_transforms_to_bones">
 			<return type="void" />
 			<description>
-				Synchronizes the transforms of all recognized effector nodes with those of their corresponding bones. This is particularly useful for editor tooling.
+				Transforms all linked [GodotIKEffector]s to be at the current [Skeleton3D]s pose. Useful for editor tooling - to reset the IK state.
+				See also [method GodotIKEffector.set_transform_to_bone].
 			</description>
 		</method>
 	</methods>

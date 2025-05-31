@@ -35,7 +35,7 @@ public:
 
 	Skeleton3D *get_skeleton() const;
 
-	bool has_one_pole = false;
+	void set_transform_to_bone();
 
 	void set_active(bool p_active);
 	bool is_active() const;
