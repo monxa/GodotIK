@@ -498,6 +498,7 @@ void GodotIK::initialize_if_dirty() {
 			bone_effector_map.write[bone_idx].push_back(chain.effector);
 		}
 	}
+	update_configuration_warnings();
 	dirty = false;
 }
 
