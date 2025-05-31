@@ -1,5 +1,5 @@
-#ifndef GODOT_IK_EDITOR_PLUGIN
-#define GODOT_IK_EDITOR_PLUGIN
+#ifndef GODOT_IK_EDITOR_PLUGIN_H
+#define GODOT_IK_EDITOR_PLUGIN_H
 #include "godot_cpp/classes/editor_inspector_plugin.hpp"
 #include "godot_cpp/classes/editor_plugin.hpp"
 #include "godot_cpp/classes/wrapped.hpp"

@@ -137,10 +137,8 @@ Skeleton3D *GodotIKEffector::get_skeleton() const {
 
 void GodotIKEffector::set_transform_to_bone() {
 	Skeleton3D *skeleton = get_skeleton();
-	if (!skeleton) {
-		ERR_FAIL_NULL_MSG(skeleton, "[GodotIK] set_transform_to_pose failed - Skeleton could not be retrieved.");
-		return;
-	}
+	ERR_FAIL_NULL_MSG(skeleton, "[GodotIK] set_transform_to_pose failed - Skeleton could not be retrieved.");
+
 	ERR_FAIL_INDEX_MSG(bone_idx, skeleton->get_bone_count(), "[GodotIK] set_transform_to_pose failed - Effectors bone_idx not in skeletons bones.");
 	set_global_transform(skeleton->get_global_transform() * skeleton->get_bone_global_pose(bone_idx));
 }
