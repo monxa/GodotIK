@@ -19,6 +19,9 @@ protected:
 	static void _bind_methods();
 
 private:
+    void reset_single_effector(Object * p_effector);
+    void reset_all_effectors(Object * p_ik_controller);
+private:
 	Ref<GodotIKEditorInspectorPlugin> inspector_plugin;
 }; // ! GodotIKEditorPlugin
 
