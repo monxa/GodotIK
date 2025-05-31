@@ -71,7 +71,7 @@ void GodotIK::_notification(int p_notification) {
 
 PackedStringArray GodotIK::_get_configuration_warnings() const {
 	PackedStringArray result;
-	if (chains.size() == 0 && is_active()) {
+	if (effectors.size() == 0) {
 		result.push_back("At least one child effector is required.");
 	}
 	return result;
@@ -498,7 +498,6 @@ void GodotIK::initialize_if_dirty() {
 			bone_effector_map.write[bone_idx].push_back(chain.effector);
 		}
 	}
-	update_configuration_warnings();
 	dirty = false;
 }
 
@@ -589,6 +588,7 @@ void GodotIK::set_effector_properties(GodotIKEffector *effector, GodotIK *ik_con
 			constraint->set_ik_controller(this);
 		}
 	}
+	update_configuration_warnings();
 }
 
 void GodotIK::initialize_chains() {
@@ -636,7 +636,6 @@ void GodotIK::initialize_chains() {
 				new_chain.constraints.write[placement_in_chain] = constraint;
 			}
 		}
-		effector->has_one_pole = effector_pole_count == 1;
 		chains.push_back(new_chain);
 	}
 }
@@ -734,25 +733,18 @@ Vector<Node *> GodotIK::get_nested_children_dsf(Node *base) const {
 
 // Computes the per-iteration influence step to reach a total influence after N iterations
 float GodotIK::compute_constraint_step_influence(float total_influence, int iteration_count) {
-    if (total_influence == 0 || total_influence == 1. || iteration_count == 0){
-        return total_influence;
-    }
+	if (total_influence == 0 || total_influence == 1. || iteration_count == 0) {
+		return total_influence;
+	}
 
 	return 1.0f - powf(1.0f - total_influence, 1.0f / float(iteration_count));
 }
 
 // For editor tooling:
 void GodotIK::set_effector_transforms_to_bones() {
-	Skeleton3D *skeleton = get_skeleton();
-	if (!skeleton)
-		return;
-	initialize_if_dirty();
-	for (auto chain : chains) {
-		if (chain.bones.size() == 0)
-			continue;
-		Vector3 bone_position = positions[chain.bones[0]];
-		chain.effector->set_global_transform(skeleton->get_global_transform() * initial_transforms[chain.bones[0]]);
-	}
+    for (GodotIKEffector * effector : effectors){
+        effector->set_transform_to_bone();
+    }
 }
 
 // !Helpers
