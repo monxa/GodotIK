@@ -1,6 +1,5 @@
 #include "godot_ik_effector.h"
 #include "godot_cpp/core/error_macros.hpp"
-#include "godot_cpp/variant/utility_functions.hpp"
 #include "godot_ik.h"
 
 #include <godot_cpp/classes/object.hpp>
@@ -136,18 +135,17 @@ Skeleton3D *GodotIKEffector::get_skeleton() const {
 	return ik_controller->get_skeleton();
 }
 
-void GodotIKEffector::set_transform_to_bone(){
-    Skeleton3D * skeleton = get_skeleton();
-    if (!skeleton){
-        ERR_FAIL_NULL_MSG(skeleton, "[GodotIK] set_transform_to_pose failed - Skeleton could not be retrieved.");
-        return;
-    }
-    ERR_FAIL_INDEX_MSG(bone_idx, skeleton->get_bone_count(), "[GodotIK] set_transform_to_pose failed - Effectors bone_idx not in skeletons bones.");
-    set_global_transform(skeleton->get_global_transform() * skeleton->get_bone_global_pose(bone_idx));
+void GodotIKEffector::set_transform_to_bone() {
+	Skeleton3D *skeleton = get_skeleton();
+	if (!skeleton) {
+		ERR_FAIL_NULL_MSG(skeleton, "[GodotIK] set_transform_to_pose failed - Skeleton could not be retrieved.");
+		return;
+	}
+	ERR_FAIL_INDEX_MSG(bone_idx, skeleton->get_bone_count(), "[GodotIK] set_transform_to_pose failed - Effectors bone_idx not in skeletons bones.");
+	set_global_transform(skeleton->get_global_transform() * skeleton->get_bone_global_pose(bone_idx));
 }
 
-		void
-		GodotIKEffector::set_active(bool p_active) {
+void GodotIKEffector::set_active(bool p_active) {
 	active = p_active;
 }
 
