@@ -1,8 +1,8 @@
 #ifndef GODOT_IK_EDITOR_PLUGIN_H
 #define GODOT_IK_EDITOR_PLUGIN_H
-#include "godot_cpp/classes/editor_inspector_plugin.hpp"
-#include "godot_cpp/classes/editor_plugin.hpp"
-#include "godot_cpp/classes/wrapped.hpp"
+#include <godot_cpp/classes/editor_inspector_plugin.hpp>
+#include <godot_cpp/classes/editor_plugin.hpp>
+#include <godot_cpp/classes/wrapped.hpp>
 
 namespace godot {
 
@@ -19,8 +19,9 @@ protected:
 	static void _bind_methods();
 
 private:
-    void reset_single_effector(Object * p_effector);
-    void reset_all_effectors(Object * p_ik_controller);
+	void reset_single_effector(Object *p_effector);
+	void reset_all_effectors(Object *p_ik_controller);
+
 private:
 	Ref<GodotIKEditorInspectorPlugin> inspector_plugin;
 }; // ! GodotIKEditorPlugin
