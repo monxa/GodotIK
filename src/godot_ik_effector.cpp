@@ -1,4 +1,5 @@
 #include "godot_ik_effector.h"
+#include "godot_cpp/core/error_macros.hpp"
 #include "godot_ik.h"
 
 #include <godot_cpp/classes/object.hpp>
@@ -43,6 +44,8 @@ void GodotIKEffector::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("ik_property_changed"));
 
 	ClassDB::bind_method(D_METHOD("get_skeleton"), &GodotIKEffector::get_skeleton);
+
+	ClassDB::bind_method(D_METHOD("set_transform_to_bone"), &GodotIKEffector::set_transform_to_bone);
 
 	ClassDB::bind_method(D_METHOD("get_ik_controller"), &GodotIKEffector::get_ik_controller);
 }
@@ -130,6 +133,14 @@ Skeleton3D *GodotIKEffector::get_skeleton() const {
 		return nullptr;
 	}
 	return ik_controller->get_skeleton();
+}
+
+void GodotIKEffector::set_transform_to_bone() {
+	Skeleton3D *skeleton = get_skeleton();
+	ERR_FAIL_NULL_MSG(skeleton, "[GodotIK] set_transform_to_pose failed - Skeleton could not be retrieved.");
+
+	ERR_FAIL_INDEX_MSG(bone_idx, skeleton->get_bone_count(), "[GodotIK] set_transform_to_pose failed - Effectors bone_idx not in skeletons bones.");
+	set_global_transform(skeleton->get_global_transform() * skeleton->get_bone_global_pose(bone_idx));
 }
 
 void GodotIKEffector::set_active(bool p_active) {
