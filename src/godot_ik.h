@@ -28,7 +28,7 @@ private:
 		Vector3 effector_position;
 		Vector<GodotIKConstraint *> constraints;
 		int closest_parent_in_chain = -1;
-		int closest_parents_child_in_chain = -1;
+		int pivot_child_in_ancestor = -1;
 	};
 
 public:
@@ -96,7 +96,7 @@ private:
 	Callable callable_deinitialize;
 
 	// update ------
-	void propergate_positions_from_chain_ancestors();
+	void propagate_positions_from_chain_ancestors();
 	void solve_forward();
 	void solve_backward();
 	void apply_positions();
