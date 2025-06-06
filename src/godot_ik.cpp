@@ -1,11 +1,14 @@
 #include "godot_ik.h"
+#include "godot_cpp/variant/quaternion.hpp"
+#include "godot_cpp/variant/string.hpp"
+#include "godot_cpp/variant/transform2d.hpp"
 #include "godot_ik_effector.h"
 
-#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/classes/performance.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -117,6 +120,7 @@ void GodotIK::_process_modification() {
 	}
 
 	for (current_iteration = 0; current_iteration < iteration_count; current_iteration++) {
+		propagate_positions_from_chain_ancestors();
 		solve_backward();
 		solve_forward();
 	}
@@ -129,17 +133,71 @@ void GodotIK::_process_modification() {
 }
 
 void GodotIK::set_position_group(int p_idx_bone_in_group, const Vector3 &p_pos_bone) {
-	ERR_FAIL_COND_MSG(!grouped_by_position.has(p_idx_bone_in_group), "grouped_by_position should have every index.");
+	ERR_FAIL_COND_MSG(!grouped_by_position.has(p_idx_bone_in_group), "[GodotIK] grouped_by_position should have every index.");
 	Vector<int> group = grouped_by_position.get(p_idx_bone_in_group);
-	ERR_FAIL_COND_MSG(group.size() == 0, "grouped_by_position should be reflexive.");
+	ERR_FAIL_COND_MSG(group.size() == 0, "[GodotIK] grouped_by_position should be reflexive.");
 	for (int i = 0; i < group.size(); i++) {
 		positions.write[group[i]] = p_pos_bone;
 	}
 }
 
+// Apply ancestor's transform offset to all intermediate bones (from root up to—but not including—ancestor)
+void GodotIK::propagate_positions_from_chain_ancestors() {
+	Skeleton3D *skeleton = get_skeleton();
+	if (!skeleton) {
+		return;
+	}
+	for (const IKChain &chain : chains) {
+		if (chain.closest_parent_in_chain == -1) {
+			continue;
+		}
+
+		ERR_FAIL_INDEX(0, chain.bones.size());
+		int root_idx = chain.bones[chain.bones.size() - 1];
+		int ancestor_idx = root_idx; // include root_idx in updates
+
+		Vector<int> list_to_closest_parent; // TODO: Cache root to ancestor list for performance
+		while (ancestor_idx != chain.closest_parent_in_chain) {
+			list_to_closest_parent.push_back(ancestor_idx);
+			ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
+			ERR_FAIL_COND_MSG(ancestor_idx == -1, "[GodotIK] Invalid hierarchy: closest_parent_in_chain not actually reachable from root_idx.");
+		}
+
+		ERR_FAIL_INDEX_MSG(0, list_to_closest_parent.size(), String("[GodotIK] Panic: Dependency propagation from invalid state. Please open an issue!") + (list_to_closest_parent.size()));
+
+		int idx_ancestor_bone = chain.closest_parent_in_chain;
+		int child_idx_of_ancestor_bone = chain.pivot_child_in_ancestor;
+
+		Transform3D rest_ancestor = initial_transforms[chain.closest_parent_in_chain];
+		Transform3D rest_ancestor_child = initial_transforms[child_idx_of_ancestor_bone];
+
+		Vector3 rest_dir = rest_ancestor.origin.direction_to(rest_ancestor_child.origin);
+		Vector3 cur_dir = positions[idx_ancestor_bone].direction_to(positions[child_idx_of_ancestor_bone]);
+
+		ERR_FAIL_COND_MSG(rest_dir.length() == 0 || cur_dir.length() == 0, "[GodotIK] Can't propergate transforms with zero length base bone. Please open an issue.");
+
+		// This simulates the actual end transform and propagates it through the chain.
+		// Same as in final apply_positions post-pass. Note: Might not work if deprecated use_global_poles = true.
+		Quaternion adjustment = Quaternion(rest_dir, cur_dir);
+		Basis new_rotation = adjustment * rest_ancestor.basis;
+		Transform3D new_transform = Transform3D(new_rotation, positions[idx_ancestor_bone]);
+		Transform3D delta_transform = new_transform * rest_ancestor.inverse();
+
+		Vector<int> list_from_ancestor = list_to_closest_parent;
+		list_from_ancestor.reverse();
+		for (int index : list_to_closest_parent) {
+			Transform3D rest_transform = initial_transforms[index];
+			Transform3D adjusted_transform = delta_transform * rest_transform;
+			delta_transform = adjusted_transform * rest_transform.inverse();
+			positions.write[index] = (adjusted_transform).origin;
+		}
+	}
+}
+
 void GodotIK::solve_backward() {
-	// TODO: Introduce a depth-based chain iteration strategy (look into git history, work had already begun on this)
-	for (IKChain &chain : chains) {
+	// Chains are sorted by shallowest bone; iterate in reverse for backward pass
+	for (int idx_chain = chains.size() - 1; idx_chain >= 0; idx_chain--) {
+		IKChain &chain = chains.write[idx_chain];
 		if (chain.bones.size() == 0 || chain.effector->get_influence() == 0.) {
 			continue;
 		}
@@ -169,8 +227,9 @@ void GodotIK::solve_backward() {
 }
 
 void GodotIK::solve_forward() {
-	// TODO: Introduce a depth-based chain iteration strategy (look into git history, work had already begun on this)
-	for (IKChain &chain : chains) {
+	// Forward pass uses sorted order (shallowest chains first)
+	for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
+		IKChain &chain = chains.write[idx_chain];
 		if (!chain.effector->is_active() || chain.effector->get_influence() == 0.) {
 			continue;
 		}
@@ -452,36 +511,88 @@ void GodotIK::initialize_if_dirty() {
 	initialize_bone_lengths();
 	initialize_effectors();
 	initialize_chains();
+
 	{ // Indices by depth creation.
+		HashSet<int> in_chain;
+		for (const IKChain &chain : chains) {
+			for (int idx : chain.bones) {
+				in_chain.insert(idx);
+			}
+		}
 		Vector<int> bone_depths = calculate_bone_depths(skeleton);
 		Vector<int> indices;
 		indices.resize(bone_depths.size());
 		for (int i = 0; i < bone_depths.size(); i++) {
 			indices.write[i] = i;
 		}
-		HashSet<int> collected_chain_indices;
-		for (const IKChain &chain : chains) {
-			for (int idx : chain.bones) {
-				collected_chain_indices.insert(idx);
-			}
-		}
 
 		struct DepthComparator {
-			const Vector<int> &depths;
-			const HashSet<int> &in_chain;
+			const Vector<int> &comp_depths;
+			const HashSet<int> &comp_in_chain;
 			DepthComparator(const Vector<int> &p_depths, const HashSet<int> &p_in_chain) :
-					depths(p_depths), in_chain(p_in_chain) {
+					comp_depths(p_depths), comp_in_chain(p_in_chain) {
 			}
 
-			// Respect depth AND make bones in chains shallower
+			// Respect depth and make bones that are in chains shallower. Shallower -> Processed first.
 			bool operator()(int a, int b) const {
-				return depths[a] < depths[b] || (depths[a] == depths[b] && in_chain.has(a) && !in_chain.has(b));
+				return comp_depths[a] < comp_depths[b] || (comp_depths[a] == comp_depths[b] && comp_in_chain.has(a) && !comp_in_chain.has(b));
 			}
 		};
 
-		indices.sort_custom<DepthComparator>(DepthComparator(bone_depths, collected_chain_indices));
+		indices.sort_custom<DepthComparator>(DepthComparator(bone_depths, in_chain));
 		indices_by_depth = indices;
 	}
+
+	{ // Sort chains by depth of shallowest bone.
+		struct DepthComparator {
+			bool operator()(const IKChain &a, const IKChain &b) const {
+				if (a.bones.size() == 0) {
+					return true;
+				}
+				if (b.bones.size() == 0) {
+					return false;
+				}
+				return a.bones[a.bones.size() - 1] < b.bones[b.bones.size() - 1];
+			};
+		};
+		chains.sort_custom<DepthComparator>(DepthComparator());
+	}
+
+	// Recalculate a mapping on the sorted chains
+	HashMap<int, Pair<int, int>> bone_to_chain_map; // bone_idx -> (chain_index, index_in_chain)
+	for (int i = 0; i < chains.size(); i++) {
+		bone_to_chain_map.reserve(skeleton->get_bone_count());
+		for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
+			const IKChain &chain = chains[idx_chain];
+			for (int idx_in_chain = 0; idx_in_chain < chain.bones.size(); ++idx_in_chain) {
+				int bone_idx = chain.bones[idx_in_chain];
+				if (bone_to_chain_map.has(bone_idx)) {
+					continue;
+				}
+				bone_to_chain_map.insert(bone_idx, Pair(idx_chain, idx_in_chain));
+			}
+		}
+	}
+
+	// assign closest_parent in chain
+	for (IKChain &chain : chains) {
+		if (chain.bones.size() == 0) {
+			continue;
+		}
+		int root_idx = chain.bones[chain.bones.size() - 1];
+		int ancestor_idx = skeleton->get_bone_parent(root_idx);
+		while (ancestor_idx != -1 && !bone_to_chain_map.has(ancestor_idx)) {
+			ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
+		}
+		chain.closest_parent_in_chain = ancestor_idx;
+		if (ancestor_idx != -1) {
+			Pair placemnt_pair = bone_to_chain_map.get(ancestor_idx);
+			ERR_FAIL_COND_MSG(placemnt_pair.second <= 0, "[GodotIK] Effectors inbetween chains not supported. Please open an issue.");
+			chain.pivot_child_in_ancestor = chains[placemnt_pair.first].bones[placemnt_pair.second - 1];
+		}
+	}
+
+	// fill needs_processing
 	// + 1 for identity_idx
 	needs_processing.resize(skeleton->get_bone_count() + 1);
 	needs_processing.fill(false);
@@ -675,7 +786,7 @@ void GodotIK::initialize_connections(Node *p_root) {
 
 void GodotIK::update_all_transforms_from_skeleton() {
 	Skeleton3D *skeleton = get_skeleton();
-	ERR_FAIL_NULL(skeleton);
+	ERR_FAIL_NULL_MSG(skeleton, "[GodotIK] No skeleton during _update_all_transforms_from_skeleton.");
 
 	initial_transforms.resize(identity_idx + 1); // +1 for identity index
 
@@ -698,10 +809,7 @@ void GodotIK::make_dirty() {
 // ------------ Helpers ----------------
 
 Vector<int> GodotIK::calculate_bone_depths(Skeleton3D *p_skeleton) {
-	if (!p_skeleton) {
-		print_error("Skeleton not initialized while calculating bone depths");
-		return Vector<int>();
-	}
+	ERR_FAIL_NULL_V_MSG(p_skeleton, Vector<int>(), "[GodotIK] No skeleton during calculate_bone_depths.");
 
 	int bone_count = p_skeleton->get_bone_count();
 	if (bone_count == 0) {
@@ -795,10 +903,7 @@ int GodotIK::get_current_iteration() {
 }
 
 void GodotIK::add_external_root(GodotIKRoot *p_root) {
-	if (this->is_ancestor_of(p_root) || p_root->is_ancestor_of(this)) {
-		print_error("GodotIK can't be ancestor of its external root or vise versa.");
-		return;
-	}
+	ERR_FAIL_COND_MSG(this->is_ancestor_of(p_root) || p_root->is_ancestor_of(this), "[GodotIK] can't be ancestor of its external root or vise versa.");
 	external_roots.push_back(p_root);
 	if (get_skeleton()) {
 		initialize_if_dirty();
