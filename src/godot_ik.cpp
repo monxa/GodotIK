@@ -176,6 +176,8 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 
 		ERR_FAIL_COND_MSG(rest_dir.length() == 0 || cur_dir.length() == 0, "[GodotIK] Can't propergate transforms with zero length base bone. Please open an issue.");
 
+		// This simulates the actual end transform and propagates it through the chain.
+		// Same as in final apply_positions post-pass. Note: Might not work if deprecated use_global_poles = true.
 		Quaternion adjustment = Quaternion(rest_dir, cur_dir);
 		Basis new_rotation = adjustment * rest_ancestor.basis;
 		Transform3D new_transform = Transform3D(new_rotation, positions[idx_ancestor_bone]);
