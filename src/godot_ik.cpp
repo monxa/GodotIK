@@ -138,38 +138,6 @@ void GodotIK::set_position_group(int p_idx_bone_in_group, const Vector3 &p_pos_b
 	}
 }
 
-void GodotIK::solve_backward() {
-	// Chains are sorted by shallowest bone; iterate in reverse for backward pass
-	for (int idx_chain = chains.size() - 1; idx_chain >= 0; idx_chain--) {
-		IKChain &chain = chains.write[idx_chain];
-		if (chain.bones.size() == 0 || chain.effector->get_influence() == 0.) {
-			continue;
-		}
-		if (!chain.effector->is_active()) {
-			continue;
-		}
-		const int leaf_idx = 0;
-		set_position_group(chain.bones[leaf_idx], chain.effector_position);
-
-		if (chain.constraints[leaf_idx]) {
-			apply_constraint(chain, leaf_idx, GodotIKConstraint::Dir::BACKWARD);
-		}
-		for (int i = 1; i < chain.bones.size() - 1; ++i) {
-			int idx_child = chain.bones[i - 1];
-			int idx_bone = chain.bones[i];
-			float length = bone_lengths[idx_child];
-			Vector3 pos_child = positions[idx_child];
-			Vector3 pos_bone = positions[idx_bone];
-
-			pos_bone = pos_child + pos_child.direction_to(pos_bone) * length;
-			set_position_group(idx_bone, pos_bone);
-			if (chain.constraints[i]) {
-				apply_constraint(chain, i, GodotIKConstraint::Dir::BACKWARD);
-			}
-		}
-	}
-}
-
 // Apply ancestor's transform offset to all intermediate bones (from root up to—but not including—ancestor)
 void GodotIK::propergate_positions_from_chain_ancestors(){
     Skeleton3D * skeleton = get_skeleton();
@@ -201,6 +169,38 @@ void GodotIK::propergate_positions_from_chain_ancestors(){
             positions.write[index] = initial_transforms[index].origin + offset;
         }
     }
+}
+
+void GodotIK::solve_backward() {
+	// Chains are sorted by shallowest bone; iterate in reverse for backward pass
+	for (int idx_chain = chains.size() - 1; idx_chain >= 0; idx_chain--) {
+		IKChain &chain = chains.write[idx_chain];
+		if (chain.bones.size() == 0 || chain.effector->get_influence() == 0.) {
+			continue;
+		}
+		if (!chain.effector->is_active()) {
+			continue;
+		}
+		const int leaf_idx = 0;
+		set_position_group(chain.bones[leaf_idx], chain.effector_position);
+
+		if (chain.constraints[leaf_idx]) {
+			apply_constraint(chain, leaf_idx, GodotIKConstraint::Dir::BACKWARD);
+		}
+		for (int i = 1; i < chain.bones.size() - 1; ++i) {
+			int idx_child = chain.bones[i - 1];
+			int idx_bone = chain.bones[i];
+			float length = bone_lengths[idx_child];
+			Vector3 pos_child = positions[idx_child];
+			Vector3 pos_bone = positions[idx_bone];
+
+			pos_bone = pos_child + pos_child.direction_to(pos_bone) * length;
+			set_position_group(idx_bone, pos_bone);
+			if (chain.constraints[i]) {
+				apply_constraint(chain, i, GodotIKConstraint::Dir::BACKWARD);
+			}
+		}
+	}
 }
 
 void GodotIK::solve_forward() {
