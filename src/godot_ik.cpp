@@ -807,7 +807,7 @@ void GodotIK::make_dirty() {
 // ------------ Helpers ----------------
 
 Vector<int> GodotIK::calculate_bone_depths(Skeleton3D *p_skeleton) {
-    ERR_FAIL_NULL_V_MSG(p_skeleton, Vector<int>(), "[GodotIK] No skeleton during calculate_bone_depths.");
+	ERR_FAIL_NULL_V_MSG(p_skeleton, Vector<int>(), "[GodotIK] No skeleton during calculate_bone_depths.");
 
 	int bone_count = p_skeleton->get_bone_count();
 	if (bone_count == 0) {
@@ -901,7 +901,7 @@ int GodotIK::get_current_iteration() {
 }
 
 void GodotIK::add_external_root(GodotIKRoot *p_root) {
-    ERR_FAIL_COND_MSG(this->is_ancestor_of(p_root) || p_root->is_ancestor_of(this), "[GodotIK] can't be ancestor of its external root or vise versa.");
+	ERR_FAIL_COND_MSG(this->is_ancestor_of(p_root) || p_root->is_ancestor_of(this), "[GodotIK] can't be ancestor of its external root or vise versa.");
 	external_roots.push_back(p_root);
 	if (get_skeleton()) {
 		initialize_if_dirty();
