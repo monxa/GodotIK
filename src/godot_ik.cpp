@@ -1,4 +1,6 @@
 #include "godot_ik.h"
+#include "godot_cpp/variant/quaternion.hpp"
+#include "godot_cpp/variant/transform2d.hpp"
 #include "godot_ik_effector.h"
 
 #include <godot_cpp/classes/performance.hpp>
@@ -117,8 +119,8 @@ void GodotIK::_process_modification() {
 	}
 
 	for (current_iteration = 0; current_iteration < iteration_count; current_iteration++) {
-	    propergate_positions_from_chain_ancestors();
-	    solve_backward();
+		propergate_positions_from_chain_ancestors();
+		solve_backward();
 		solve_forward();
 	}
 	apply_positions();
@@ -139,36 +141,54 @@ void GodotIK::set_position_group(int p_idx_bone_in_group, const Vector3 &p_pos_b
 }
 
 // Apply ancestor's transform offset to all intermediate bones (from root up to—but not including—ancestor)
-void GodotIK::propergate_positions_from_chain_ancestors(){
-    Skeleton3D * skeleton = get_skeleton();
-    if (!skeleton){
-        return;
-    }
-    for (const IKChain & chain : chains){
-        if (chain.closest_parent_in_chain == -1){
-            continue;
-        }
+void GodotIK::propergate_positions_from_chain_ancestors() {
+	Skeleton3D *skeleton = get_skeleton();
+	if (!skeleton) {
+		return;
+	}
+	for (const IKChain &chain : chains) {
+		if (chain.closest_parent_in_chain == -1) {
+			continue;
+		}
 
+		ERR_FAIL_INDEX(1, chain.bones.size());
+		int root_idx = chain.bones[chain.bones.size() - 1];
+		int ancestor_idx = root_idx; // include root_idx in updates
 
-        ERR_FAIL_INDEX(1, chain.bones.size());
-        int root_idx = chain.bones[chain.bones.size() - 1];
-        // Todo: Cache root to ancestor list for performance
-        int ancestor_idx = root_idx; // include root_idx in updates
-        Vector<int> list_to_closest_parent;
-        while(ancestor_idx != chain.closest_parent_in_chain){
-            list_to_closest_parent.push_back(ancestor_idx);
-            ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
-            ERR_FAIL_COND_MSG(ancestor_idx == -1, "Invalid hierarchy: closest_parent_in_chain not actually reachable from root_idx.");
-        }
+		Vector<int> list_to_closest_parent; // Todo: Cache root to ancestor list for performance
+		while (ancestor_idx != chain.closest_parent_in_chain) {
+			list_to_closest_parent.push_back(ancestor_idx);
+			ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
+			ERR_FAIL_COND_MSG(ancestor_idx == -1, "Invalid hierarchy: closest_parent_in_chain not actually reachable from root_idx.");
+		}
 
-        ERR_FAIL_COND(list_to_closest_parent.size() < 1);
+		ERR_FAIL_COND(list_to_closest_parent.size() < 1);
 
-        Vector3 offset = positions[chain.closest_parent_in_chain] - initial_transforms[chain.closest_parent_in_chain].origin;
+		int idx_ancestor_bone = chain.closest_parent_in_chain;
+		int child_idx_of_ancestor_bone = chain.closest_parents_child_in_chain;
 
-        for (int index : list_to_closest_parent){
-            positions.write[index] = initial_transforms[index].origin + offset;
-        }
-    }
+		Transform3D rest_ancestor = initial_transforms[chain.closest_parent_in_chain];
+		Transform3D rest_ancestor_child = initial_transforms[child_idx_of_ancestor_bone];
+
+		Vector3 rest_dir = rest_ancestor.origin.direction_to(rest_ancestor_child.origin);
+		Vector3 cur_dir = positions[idx_ancestor_bone].direction_to(positions[child_idx_of_ancestor_bone]);
+
+		ERR_FAIL_COND_MSG(rest_dir.length() == 0 || cur_dir.length() == 0, "Can't propergate transforms with zero length base bone. Please open an issue.");
+
+		Quaternion adjustment = Quaternion(rest_dir, cur_dir);
+		Basis new_rotation = adjustment * rest_ancestor.basis;
+		Transform3D new_transform = Transform3D(new_rotation, positions[idx_ancestor_bone]);
+		Transform3D delta_transform = new_transform * rest_ancestor.inverse();
+
+		Vector<int> list_from_ancestor = list_to_closest_parent;
+		list_from_ancestor.reverse();
+		for (int index : list_to_closest_parent) {
+			Transform3D rest_transform = initial_transforms[index];
+			Transform3D adjusted_transform = delta_transform * rest_transform;
+			delta_transform = adjusted_transform * rest_transform.inverse();
+			positions.write[index] = (adjusted_transform).origin;
+		}
+	}
 }
 
 void GodotIK::solve_backward() {
@@ -489,14 +509,13 @@ void GodotIK::initialize_if_dirty() {
 	initialize_effectors();
 	initialize_chains();
 
-	HashSet<int> in_chain;
-	for (const IKChain &chain : chains) {
-		for (int idx : chain.bones) {
-			in_chain.insert(idx);
-		}
-	}
-
 	{ // Indices by depth creation.
+		HashSet<int> in_chain;
+		for (const IKChain &chain : chains) {
+			for (int idx : chain.bones) {
+				in_chain.insert(idx);
+			}
+		}
 		Vector<int> bone_depths = calculate_bone_depths(skeleton);
 		Vector<int> indices;
 		indices.resize(bone_depths.size());
@@ -536,17 +555,38 @@ void GodotIK::initialize_if_dirty() {
 		chains.sort_custom<DepthComparator>(DepthComparator());
 	}
 
-	// assign closest_parent in chain
-	for (IKChain & chain : chains){
-	    if (chain.bones.size() == 0){
+	// Recalculate a mapping on the sorted chains
+	HashMap<int, Pair<int, int>> bone_to_chain_map; // bone_idx -> (chain_index, index_in_chain)
+	for (int i = 0; i < chains.size(); i++) {
+		bone_to_chain_map.reserve(skeleton->get_bone_count());
+		for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
+			const IKChain &chain = chains[idx_chain];
+			for (int idx_in_chain = 0; idx_in_chain < chain.bones.size(); ++idx_in_chain) {
+				int bone_idx = chain.bones[idx_in_chain];
+				if (bone_to_chain_map.has(bone_idx)) {
 					continue;
+				}
+				bone_to_chain_map.insert(bone_idx, Pair(idx_chain, idx_in_chain));
+			}
 		}
-		int root_idx = chain.bones[chain.bones.size()-1];
+	}
+
+	// assign closest_parent in chain
+	for (IKChain &chain : chains) {
+		if (chain.bones.size() == 0) {
+			continue;
+		}
+		int root_idx = chain.bones[chain.bones.size() - 1];
 		int ancestor_idx = skeleton->get_bone_parent(root_idx);
-		while(ancestor_idx != -1 && !in_chain.has(ancestor_idx)){
-            ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
+		while (ancestor_idx != -1 && !bone_to_chain_map.has(ancestor_idx)) {
+			ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
 		}
 		chain.closest_parent_in_chain = ancestor_idx;
+		if (ancestor_idx != -1) {
+			Pair placemnt_pair = bone_to_chain_map.get(ancestor_idx);
+			ERR_FAIL_COND_MSG(placemnt_pair.second <= 0, "Effectors inbetween chains not supported. Please open an issue.");
+			chain.closest_parents_child_in_chain = chains[placemnt_pair.first].bones[placemnt_pair.second - 1];
+		}
 	}
 
 	// fill needs_processing

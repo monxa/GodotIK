@@ -28,6 +28,7 @@ private:
 		Vector3 effector_position;
 		Vector<GodotIKConstraint *> constraints;
 		int closest_parent_in_chain = -1;
+		int closest_parents_child_in_chain = -1;
 	};
 
 public:
