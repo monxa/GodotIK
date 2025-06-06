@@ -71,7 +71,6 @@ private:
 	// Bone length relative to parent. Root has no bone length.
 	Vector<float> bone_lengths;
 	HashMap<int, Vector<int>> grouped_by_position;
-	Vector<int> bone_depths;
 	Vector<int> indices_by_depth;
 
 	Vector<bool> needs_processing;

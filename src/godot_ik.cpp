@@ -1,7 +1,7 @@
 #include "godot_ik.h"
-#include "godot_cpp/core/error_macros.hpp"
 #include "godot_ik_effector.h"
 
+#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/classes/performance.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -9,6 +9,7 @@
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
+#include <godot_cpp/templates/hash_set.hpp>
 #include <godot_cpp/templates/pair.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -216,8 +217,9 @@ void GodotIK::apply_positions() {
 		parent_idx = (parent_idx < 0) ? identity_idx : parent_idx;
 
 		// If neither this bone nor its parent needs processing, skip it.
-		if (!needs_processing[bone_idx] && !needs_processing[parent_idx])
+		if (!needs_processing[bone_idx] && !needs_processing[parent_idx]) {
 			continue;
+		}
 
 		// Only apply rotation correction once to each parent_idx. All children will share the same position.
 		// We greedily process the first child->parent relation only.
@@ -232,8 +234,9 @@ void GodotIK::apply_positions() {
 		int grandparent_idx = identity_idx;
 		if (parent_idx != identity_idx) {
 			grandparent_idx = skeleton->get_bone_parent(parent_idx);
-			if (grandparent_idx < 0)
+			if (grandparent_idx < 0) {
 				grandparent_idx = identity_idx;
+			}
 		}
 
 		// Cache the necessary transforms.
@@ -445,32 +448,40 @@ void GodotIK::initialize_if_dirty() {
 	}
 
 	initialize_groups();
-	bone_depths = calculate_bone_depths(skeleton);
+
+	initialize_bone_lengths();
+	initialize_effectors();
+	initialize_chains();
 	{ // Indices by depth creation.
+		Vector<int> bone_depths = calculate_bone_depths(skeleton);
 		Vector<int> indices;
 		indices.resize(bone_depths.size());
 		for (int i = 0; i < bone_depths.size(); i++) {
 			indices.write[i] = i;
 		}
+		HashSet<int> collected_chain_indices;
+		for (const IKChain &chain : chains) {
+			for (int idx : chain.bones) {
+				collected_chain_indices.insert(idx);
+			}
+		}
 
 		struct DepthComparator {
 			const Vector<int> &depths;
-			DepthComparator(const Vector<int> &p_depths) :
-					depths(p_depths) {
+			const HashSet<int> &in_chain;
+			DepthComparator(const Vector<int> &p_depths, const HashSet<int> &p_in_chain) :
+					depths(p_depths), in_chain(p_in_chain) {
 			}
 
+			// Respect depth AND make bones in chains shallower
 			bool operator()(int a, int b) const {
-				return depths[a] < depths[b];
+				return depths[a] < depths[b] || (depths[a] == depths[b] && in_chain.has(a) && !in_chain.has(b));
 			}
 		};
 
-		indices.sort_custom<DepthComparator>(DepthComparator(bone_depths));
+		indices.sort_custom<DepthComparator>(DepthComparator(bone_depths, collected_chain_indices));
 		indices_by_depth = indices;
 	}
-	initialize_bone_lengths();
-
-	initialize_effectors();
-	initialize_chains();
 	// + 1 for identity_idx
 	needs_processing.resize(skeleton->get_bone_count() + 1);
 	needs_processing.fill(false);
@@ -742,9 +753,9 @@ float GodotIK::compute_constraint_step_influence(float total_influence, int iter
 
 // For editor tooling:
 void GodotIK::set_effector_transforms_to_bones() {
-    for (GodotIKEffector * effector : effectors){
-        effector->set_transform_to_bone();
-    }
+	for (GodotIKEffector *effector : effectors) {
+		effector->set_transform_to_bone();
+	}
 }
 
 // !Helpers
