@@ -1,11 +1,11 @@
 #include "godot_ik.h"
 #include "godot_ik_effector.h"
 
-#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/classes/performance.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/templates/hash_map.hpp>
@@ -117,7 +117,8 @@ void GodotIK::_process_modification() {
 	}
 
 	for (current_iteration = 0; current_iteration < iteration_count; current_iteration++) {
-		solve_backward();
+	    propergate_positions_from_chain_ancestors();
+	    solve_backward();
 		solve_forward();
 	}
 	apply_positions();
@@ -138,8 +139,9 @@ void GodotIK::set_position_group(int p_idx_bone_in_group, const Vector3 &p_pos_b
 }
 
 void GodotIK::solve_backward() {
-	// TODO: Introduce a depth-based chain iteration strategy (look into git history, work had already begun on this)
-	for (IKChain &chain : chains) {
+	// Chains are sorted by shallowest bone; iterate in reverse for backward pass
+	for (int idx_chain = chains.size() - 1; idx_chain >= 0; idx_chain--) {
+		IKChain &chain = chains.write[idx_chain];
 		if (chain.bones.size() == 0 || chain.effector->get_influence() == 0.) {
 			continue;
 		}
@@ -168,9 +170,43 @@ void GodotIK::solve_backward() {
 	}
 }
 
+// Apply ancestor's transform offset to all intermediate bones (from root up to—but not including—ancestor)
+void GodotIK::propergate_positions_from_chain_ancestors(){
+    Skeleton3D * skeleton = get_skeleton();
+    if (!skeleton){
+        return;
+    }
+    for (const IKChain & chain : chains){
+        if (chain.closest_parent_in_chain == -1){
+            continue;
+        }
+
+
+        ERR_FAIL_INDEX(1, chain.bones.size());
+        int root_idx = chain.bones[chain.bones.size() - 1];
+        // Todo: Cache root to ancestor list for performance
+        int ancestor_idx = root_idx; // include root_idx in updates
+        Vector<int> list_to_closest_parent;
+        while(ancestor_idx != chain.closest_parent_in_chain){
+            list_to_closest_parent.push_back(ancestor_idx);
+            ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
+            ERR_FAIL_COND_MSG(ancestor_idx == -1, "Invalid hierarchy: closest_parent_in_chain not actually reachable from root_idx.");
+        }
+
+        ERR_FAIL_COND(list_to_closest_parent.size() < 1);
+
+        Vector3 offset = positions[chain.closest_parent_in_chain] - initial_transforms[chain.closest_parent_in_chain].origin;
+
+        for (int index : list_to_closest_parent){
+            positions.write[index] = initial_transforms[index].origin + offset;
+        }
+    }
+}
+
 void GodotIK::solve_forward() {
-	// TODO: Introduce a depth-based chain iteration strategy (look into git history, work had already begun on this)
-	for (IKChain &chain : chains) {
+	// Forward pass uses sorted order (shallowest chains first)
+	for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
+		IKChain &chain = chains.write[idx_chain];
 		if (!chain.effector->is_active() || chain.effector->get_influence() == 0.) {
 			continue;
 		}
@@ -452,6 +488,14 @@ void GodotIK::initialize_if_dirty() {
 	initialize_bone_lengths();
 	initialize_effectors();
 	initialize_chains();
+
+	HashSet<int> in_chain;
+	for (const IKChain &chain : chains) {
+		for (int idx : chain.bones) {
+			in_chain.insert(idx);
+		}
+	}
+
 	{ // Indices by depth creation.
 		Vector<int> bone_depths = calculate_bone_depths(skeleton);
 		Vector<int> indices;
@@ -459,29 +503,53 @@ void GodotIK::initialize_if_dirty() {
 		for (int i = 0; i < bone_depths.size(); i++) {
 			indices.write[i] = i;
 		}
-		HashSet<int> collected_chain_indices;
-		for (const IKChain &chain : chains) {
-			for (int idx : chain.bones) {
-				collected_chain_indices.insert(idx);
-			}
-		}
 
 		struct DepthComparator {
-			const Vector<int> &depths;
-			const HashSet<int> &in_chain;
+			const Vector<int> &comp_depths;
+			const HashSet<int> &comp_in_chain;
 			DepthComparator(const Vector<int> &p_depths, const HashSet<int> &p_in_chain) :
-					depths(p_depths), in_chain(p_in_chain) {
+					comp_depths(p_depths), comp_in_chain(p_in_chain) {
 			}
 
 			// Respect depth AND make bones in chains shallower
 			bool operator()(int a, int b) const {
-				return depths[a] < depths[b] || (depths[a] == depths[b] && in_chain.has(a) && !in_chain.has(b));
+				return comp_depths[a] < comp_depths[b] || (comp_depths[a] == comp_depths[b] && comp_in_chain.has(a) && !comp_in_chain.has(b));
 			}
 		};
 
-		indices.sort_custom<DepthComparator>(DepthComparator(bone_depths, collected_chain_indices));
+		indices.sort_custom<DepthComparator>(DepthComparator(bone_depths, in_chain));
 		indices_by_depth = indices;
 	}
+
+	{ // Sort chains by depth of shallowest bone.
+		struct DepthComparator {
+			bool operator()(const IKChain &a, const IKChain &b) const {
+				if (a.bones.size() == 0) {
+					return true;
+				}
+				if (b.bones.size() == 0) {
+					return false;
+				}
+				return a.bones[a.bones.size() - 1] < b.bones[b.bones.size() - 1];
+			};
+		};
+		chains.sort_custom<DepthComparator>(DepthComparator());
+	}
+
+	// assign closest_parent in chain
+	for (IKChain & chain : chains){
+	    if (chain.bones.size() == 0){
+					continue;
+		}
+		int root_idx = chain.bones[chain.bones.size()-1];
+		int ancestor_idx = skeleton->get_bone_parent(root_idx);
+		while(ancestor_idx != -1 && !in_chain.has(ancestor_idx)){
+            ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
+		}
+		chain.closest_parent_in_chain = ancestor_idx;
+	}
+
+	// fill needs_processing
 	// + 1 for identity_idx
 	needs_processing.resize(skeleton->get_bone_count() + 1);
 	needs_processing.fill(false);
