@@ -533,7 +533,7 @@ void GodotIK::initialize_if_dirty() {
 					comp_depths(p_depths), comp_in_chain(p_in_chain) {
 			}
 
-			// Respect depth AND make bones in chains shallower
+			// Respect depth and make bones that are in chains shallower. Shallower -> Processed first.
 			bool operator()(int a, int b) const {
 				return comp_depths[a] < comp_depths[b] || (comp_depths[a] == comp_depths[b] && comp_in_chain.has(a) && !comp_in_chain.has(b));
 			}
