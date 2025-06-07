@@ -1,4 +1,5 @@
 #include "godot_ik.h"
+#include "godot_cpp/variant/basis.hpp"
 
 #include <godot_ik_effector.h>
 #include <godot_cpp/classes/performance.hpp>
@@ -170,7 +171,7 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 
 		ERR_FAIL_INDEX(chain.closest_parent_in_chain, initial_transforms.size());
 		Transform3D rest_ancestor = initial_transforms[chain.closest_parent_in_chain];
-		
+
 		ERR_FAIL_INDEX_EDMSG(child_idx_of_ancestor_bone, initial_transforms.size(), chain.effector->get_name());
 		Transform3D rest_ancestor_child = initial_transforms[child_idx_of_ancestor_bone];
 
@@ -400,42 +401,11 @@ void GodotIK::apply_positions() {
 		if (parent_idx != -1) {
 			trans_parent = transforms[parent_idx];
 		}
-		switch (transform_mode) {
-			case GodotIKEffector::TransformMode::FULL_TRANSFORM: {
-				trans_bone.basis = (trans_skeleton.affine_inverse() * trans_effector).basis;
-				Transform3D local_trans_bone = trans_parent.affine_inverse() * trans_bone;
 
-				skeleton->set_bone_pose(bone_idx, local_trans_bone);
-				break;
-			}
-			case GodotIKEffector::TransformMode::STRAIGHTEN_CHAIN: {
-				if (parent_idx == -1) {
-					continue;
-				}
-				Transform3D local_trans_bone = trans_parent.affine_inverse() * trans_bone;
-				Vector3 prev_basis_scale = local_trans_bone.basis.get_scale();
-				local_trans_bone.basis = Basis().scaled(prev_basis_scale);
-
-				skeleton->set_bone_pose(bone_idx, local_trans_bone);
-				break;
-			}
-			case GodotIKEffector::TransformMode::PRESERVE_ROTATION: {
-				Transform3D init_transform_parent;
-				if (parent_idx != -1) {
-					init_transform_parent = initial_transforms[parent_idx];
-				}
-				Transform3D init_trans_bone = initial_transforms[bone_idx];
-				Transform3D init_local_trans_bone = init_transform_parent.affine_inverse() * init_trans_bone;
-
-				Transform3D local_trans_bone = trans_parent.affine_inverse() * trans_bone;
-				local_trans_bone.basis = init_local_trans_bone.basis;
-				skeleton->set_bone_pose(bone_idx, local_trans_bone);
-				break;
-			}
-			default: {
-				continue;
-			}
-		}
+		Transform3D local_trans_bone = Transform3D(trans_parent.affine_inverse() * trans_bone);
+		Basis global_basis_bone = get_effector_target_global_basis(effector, skeleton, trans_effector, trans_parent);
+		local_trans_bone.basis = trans_parent.basis.inverse() * global_basis_bone;
+		skeleton->set_bone_pose(bone_idx, local_trans_bone);
 	}
 }
 
@@ -567,7 +537,7 @@ void GodotIK::initialize_if_dirty() {
 		bone_to_chain_map.reserve(skeleton->get_bone_count());
 		for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
 			const IKChain &chain = chains[idx_chain];
-			if (chain.effector->get_bone_idx() == 0 || chain.size() == 0){
+			if (chain.effector->get_bone_idx() == 0 || chain.size() == 0) {
 				continue;
 			}
 			for (int idx_in_chain = 0; idx_in_chain < chain.size(); ++idx_in_chain) {
@@ -593,7 +563,7 @@ void GodotIK::initialize_if_dirty() {
 		chain.closest_parent_in_chain = ancestor_idx;
 		if (ancestor_idx != -1) {
 			Pair placemnt_pair = bone_to_chain_map.get(ancestor_idx);
-			if (placemnt_pair.second <= 0){
+			if (placemnt_pair.second <= 0) {
 				chain.closest_parent_in_chain = -1;
 				WARN_PRINT("[GodotIK] Effectors inbetween chains not supported. Please open an issue.");
 				continue;
@@ -617,7 +587,7 @@ void GodotIK::initialize_if_dirty() {
 			}
 		}
 	}
-	
+
 	initialize_connections(this);
 	for (GodotIKRoot *ext : external_roots) {
 		initialize_connections(ext);
@@ -739,7 +709,7 @@ void GodotIK::initialize_chains() {
 	for (GodotIKEffector *effector : effectors) {
 		IKChain new_chain;
 		new_chain.effector = effector;
-		if (skeleton->get_bone_parent(effector->get_bone_idx()) == -1){
+		if (skeleton->get_bone_parent(effector->get_bone_idx()) == -1) {
 			continue; // Don't build chains from root up.
 		}
 		int bone_idx = effector->get_bone_idx();
@@ -949,4 +919,43 @@ void GodotIK::remove_external_root(GodotIKRoot *p_root) {
 		}
 	}
 	make_dirty();
+}
+
+Basis GodotIK::get_effector_target_global_basis(
+		const GodotIKEffector *effector,
+		const Skeleton3D *skeleton,
+		const Transform3D &effector_global_transform,
+		const Transform3D &parent_global_transform) const {
+	GodotIKEffector::TransformMode transform_mode = effector->get_transform_mode();
+	if (transform_mode == GodotIKEffector::TransformMode::POSITION_ONLY) {
+		return Basis();
+	}
+
+	int bone_idx = effector->get_bone_idx();
+	int parent_idx = skeleton->get_bone_parent(bone_idx);
+	Transform3D trans_skeleton = skeleton->get_global_transform();
+	Transform3D trans_effector = effector->get_global_transform();
+
+	switch (transform_mode) {
+		case GodotIKEffector::TransformMode::FULL_TRANSFORM: {
+			return (trans_skeleton.affine_inverse() * trans_effector).basis;
+		}
+		case GodotIKEffector::TransformMode::STRAIGHTEN_CHAIN: {
+			Vector3 prev_basis_scale = effector_global_transform.basis.get_scale();
+			return parent_global_transform.basis.orthonormalized().scaled(prev_basis_scale);
+		}
+		case GodotIKEffector::TransformMode::PRESERVE_ROTATION: {
+			Transform3D init_transform_parent;
+			if (parent_idx != -1) {
+				init_transform_parent = initial_transforms[parent_idx];
+			}
+			Transform3D init_trans_bone = initial_transforms[bone_idx];
+			Transform3D init_local_trans_bone = init_transform_parent.affine_inverse() * init_trans_bone;
+
+			return parent_global_transform.basis * init_local_trans_bone.basis;
+		}
+		default: {
+			return Basis();
+		}
+	}
 }

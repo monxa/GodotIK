@@ -12,6 +12,7 @@
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
 
 namespace godot {
 
@@ -134,6 +135,12 @@ private:
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
 	Vector<Node *> get_nested_children_dsf(Node *p_base) const;
 	float compute_constraint_step_influence(float total_influence, int iteration_count);
+
+	Basis get_effector_target_global_basis(
+			const GodotIKEffector *effector,
+			const Skeleton3D *skeleton,
+			const Transform3D &effector_global_transform,
+			const Transform3D &parent_global_transform) const;
 }; // ! class GodotIK
 
 } // namespace godot
