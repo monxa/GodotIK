@@ -83,7 +83,6 @@ private:
 	Vector<Transform3D> initial_transforms;
 	Vector<Vector3> positions;
 	Vector<GodotIKEffector *> effectors;
-	Vector<Vector<GodotIKEffector *>> bone_effector_map;
 	StringName performance_monitor_name;
 	/** identity_idx is used as an extra element (at index bone_count) to represent a "null" or identity transform.
 	*** This extra element is initialized as follows:
