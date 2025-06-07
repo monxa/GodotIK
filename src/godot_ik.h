@@ -102,7 +102,7 @@ private:
 	void propagate_positions_from_chain_ancestors();
 	void solve_forward();
 	void solve_backward();
-	void apply_positions();
+	void post_pass();
 
 	// ! update --------
 
