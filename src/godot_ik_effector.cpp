@@ -122,6 +122,7 @@ void GodotIKEffector::set_transform_mode(TransformMode p_transform_mode) {
 
 void GodotIKEffector::set_ik_controller(GodotIK *p_ik_controller) {
 	ik_controller = p_ik_controller;
+	update_configuration_warnings();
 }
 
 GodotIK *GodotIKEffector::get_ik_controller() const {
