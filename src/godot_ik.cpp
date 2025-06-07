@@ -152,8 +152,8 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 			continue;
 		}
 
-		ERR_FAIL_INDEX(0, chain.bones.size());
-		int root_idx = chain.bones[chain.bones.size() - 1];
+		ERR_FAIL_INDEX(0, chain.size());
+		int root_idx = chain.bones[chain.size() - 1];
 		int ancestor_idx = root_idx; // include root_idx in updates
 
 		Vector<int> list_to_closest_parent; // TODO: Cache root to ancestor list for performance
@@ -201,7 +201,7 @@ void GodotIK::solve_backward() {
 	// Chains are sorted by shallowest bone; iterate in reverse for backward pass
 	for (int idx_chain = chains.size() - 1; idx_chain >= 0; idx_chain--) {
 		IKChain &chain = chains.write[idx_chain];
-		if (chain.bones.size() == 0 || chain.effector->get_influence() == 0.) {
+		if (chain.size() == 0 || chain.effector->get_influence() == 0.) {
 			continue;
 		}
 		if (!chain.effector->is_active()) {
@@ -213,7 +213,7 @@ void GodotIK::solve_backward() {
 		if (chain.constraints[leaf_idx]) {
 			apply_constraint(chain, leaf_idx, GodotIKConstraint::Dir::BACKWARD);
 		}
-		for (int i = 1; i < chain.bones.size() - 1; ++i) {
+		for (int i = 1; i < chain.size() - 1; ++i) {
 			int idx_child = chain.bones[i - 1];
 			int idx_bone = chain.bones[i];
 			float length = bone_lengths[idx_child];
@@ -236,11 +236,11 @@ void GodotIK::solve_forward() {
 		if (!chain.effector->is_active() || chain.effector->get_influence() == 0.) {
 			continue;
 		}
-		int root_idx = chain.bones.size() - 1;
+		int root_idx = chain.size() - 1;
 		if (root_idx >= 0 && chain.constraints[root_idx]) {
-			apply_constraint(chain, chain.bones.size() - 1, GodotIKConstraint::Dir::FORWARD);
+			apply_constraint(chain, chain.size() - 1, GodotIKConstraint::Dir::FORWARD);
 		}
-		for (int i = chain.bones.size() - 2; i >= 0; --i) {
+		for (int i = chain.size() - 2; i >= 0; --i) {
 			int idx_parent = chain.bones[i + 1];
 			int idx_bone = chain.bones[i];
 			float length = bone_lengths[idx_bone];
@@ -440,7 +440,7 @@ void GodotIK::apply_positions() {
 }
 
 void GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, GodotIKConstraint::Dir p_dir) {
-	if (p_idx_in_chain >= p_chain.bones.size()) {
+	if (p_idx_in_chain >= p_chain.size()) {
 		return;
 	}
 	GodotIKConstraint *constraint = p_chain.constraints[p_idx_in_chain];
@@ -458,7 +458,7 @@ void GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, Godot
 	Vector3 pos_bone = positions[idx_bone];
 	Vector3 pos_child;
 
-	if (p_idx_in_chain < p_chain.bones.size() - 1) {
+	if (p_idx_in_chain < p_chain.size() - 1) {
 		idx_parent = p_chain.bones[p_idx_in_chain + 1];
 		pos_parent = positions[idx_parent];
 	} else { // no parent. We are the root. Check skeleton for parent then.
@@ -567,10 +567,10 @@ void GodotIK::initialize_if_dirty() {
 		bone_to_chain_map.reserve(skeleton->get_bone_count());
 		for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
 			const IKChain &chain = chains[idx_chain];
-			if (chain.effector->get_bone_idx() == 0 || chain.bones.size() == 0){
+			if (chain.effector->get_bone_idx() == 0 || chain.size() == 0){
 				continue;
 			}
-			for (int idx_in_chain = 0; idx_in_chain < chain.bones.size(); ++idx_in_chain) {
+			for (int idx_in_chain = 0; idx_in_chain < chain.size(); ++idx_in_chain) {
 				int bone_idx = chain.bones[idx_in_chain];
 				if (bone_to_chain_map.has(bone_idx)) {
 					continue;
@@ -582,10 +582,10 @@ void GodotIK::initialize_if_dirty() {
 
 	// assign closest_parent in chain
 	for (IKChain &chain : chains) {
-		if (chain.bones.size() == 0) {
+		if (chain.size() == 0) {
 			continue;
 		}
-		int root_idx = chain.bones[chain.bones.size() - 1];
+		int root_idx = chain.bones[chain.size() - 1];
 		int ancestor_idx = skeleton->get_bone_parent(root_idx);
 		while (ancestor_idx != -1 && !bone_to_chain_map.has(ancestor_idx)) {
 			ancestor_idx = skeleton->get_bone_parent(ancestor_idx);
@@ -750,7 +750,7 @@ void GodotIK::initialize_chains() {
 		}
 
 		// add constraints to current effector
-		new_chain.constraints.resize(new_chain.bones.size());
+		new_chain.constraints.resize(new_chain.size());
 		new_chain.constraints.fill(nullptr);
 		int effector_pole_count = 0;
 		for (int i = 0; i < effector->get_child_count(); i++) {
@@ -758,7 +758,7 @@ void GodotIK::initialize_chains() {
 			if (child->is_class("GodotIKConstraint")) {
 				GodotIKConstraint *constraint = Object::cast_to<GodotIKConstraint>(child);
 				int placement_in_chain = -1;
-				for (int idx_chain = 0; idx_chain < new_chain.bones.size(); idx_chain++) {
+				for (int idx_chain = 0; idx_chain < new_chain.size(); idx_chain++) {
 					if (new_chain.bones[idx_chain] == constraint->get_bone_idx()) {
 						placement_in_chain = idx_chain;
 						break;

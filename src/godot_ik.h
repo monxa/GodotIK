@@ -29,6 +29,9 @@ private:
 		Vector<GodotIKConstraint *> constraints;
 		int closest_parent_in_chain = -1;
 		int pivot_child_in_ancestor = -1;
+		inline int size() const {
+			return bones.size();
+		}
 	};
 
 public:
