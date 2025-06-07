@@ -164,15 +164,20 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 		int work_idx = root_idx; // include root_idx in updates
 
 		Vector<int> list_to_closest_parent; // TODO: Cache root to ancestor list for performance
+
 		while (work_idx != chain.closest_parent_in_chain) {
 			list_to_closest_parent.push_back(work_idx);
 			work_idx = skeleton->get_bone_parent(work_idx);
 			ERR_FAIL_COND_MSG(work_idx == -1, "[GodotIK] Invalid hierarchy: closest_parent_in_chain not actually reachable from root_idx.");
 		}
-
 		ERR_FAIL_INDEX_MSG(0, list_to_closest_parent.size(), String("[GodotIK] Panic: Dependency propagation from invalid state. Please open an issue!") + (list_to_closest_parent.size()));
 
-		Transform3D delta_transform;
+		Vector<int> list_from_ancestor = list_to_closest_parent;
+		list_from_ancestor.reverse();
+
+		float influence = compute_influence_in_step(chain.effector->get_influence(), iteration_count);
+
+		Transform3D new_ancestor_transform;
 		ERR_FAIL_INDEX(idx_ancestor_bone, initial_transforms.size());
 		Transform3D rest_ancestor = initial_transforms[idx_ancestor_bone];
 
@@ -187,31 +192,24 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 			// Same as in final apply_positions post-pass. Note: Might not work if deprecated use_global_poles = true.
 			Quaternion adjustment = Quaternion(rest_dir, cur_dir);
 			Basis new_rotation = adjustment * rest_ancestor.basis;
-			Transform3D new_transform = Transform3D(new_rotation, positions[idx_ancestor_bone]);
-			delta_transform = new_transform * rest_ancestor.inverse();
+			new_ancestor_transform = Transform3D(new_rotation, positions[idx_ancestor_bone]);
 		} else {
 			// Effector is the shared pivot (leaf edge case)
 			int idx_parent = skeleton->get_bone_parent(idx_ancestor_bone);
 			ERR_FAIL_INDEX(idx_parent, initial_transforms.size());
 			Vector3 basis_scale = initial_transforms[idx_parent].basis.get_scale();
 			Transform3D parent_transform = Transform3D(Quaternion(Vector3(0, 1, 0), positions[idx_parent].direction_to(positions[idx_ancestor_bone])), positions[idx_parent]);
-			Transform3D ancestor_transform = Transform3D(initial_transforms[idx_ancestor_bone].get_basis(), positions[idx_ancestor_bone]);
+			new_ancestor_transform = Transform3D(initial_transforms[idx_ancestor_bone].get_basis(), positions[idx_ancestor_bone]);
 
-			Basis new_basis = get_effector_target_global_basis(chain.effector, skeleton, ancestor_transform, parent_transform);
-			ancestor_transform.basis = new_basis;
-			delta_transform = ancestor_transform * rest_ancestor.inverse();
+			Basis new_basis = get_effector_target_global_basis(chain.effector, skeleton, new_ancestor_transform, parent_transform);
+			new_ancestor_transform.basis = new_basis;
 		}
 
-		Vector<int> list_from_ancestor = list_to_closest_parent;
-		list_from_ancestor.reverse();
-
-		float influence = compute_influence_in_step(chain.effector->get_influence(), iteration_count);
+		Transform3D delta_transform = new_ancestor_transform * rest_ancestor.affine_inverse();
 
 		for (int index : list_to_closest_parent) {
-			Transform3D rest_transform = initial_transforms[index];
-			Transform3D adjusted_transform = delta_transform * rest_transform;
-			delta_transform = adjusted_transform * rest_transform.inverse();
-			positions.write[index] = positions[index].lerp(adjusted_transform.origin, influence);
+			Vector3 rest_position = initial_transforms[index].origin;
+			positions.write[index] = positions[index].lerp(delta_transform.xform(rest_position), influence);
 			needs_processing.write[index] = true;
 		}
 	}
