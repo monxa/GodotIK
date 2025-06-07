@@ -76,7 +76,7 @@ void GodotIK::_notification(int p_notification) {
 
 PackedStringArray GodotIK::_get_configuration_warnings() const {
 	PackedStringArray result;
-	if (effectors.size() == 0) {
+	if (effectors.is_empty()) {
 		result.push_back("At least one child effector is required.");
 	}
 	return result;
@@ -136,7 +136,7 @@ void GodotIK::_process_modification() {
 void GodotIK::set_position_group(int p_idx_bone_in_group, const Vector3 &p_pos_bone) {
 	ERR_FAIL_COND_MSG(!grouped_by_position.has(p_idx_bone_in_group), "[GodotIK] grouped_by_position should have every index.");
 	Vector<int> group = grouped_by_position.get(p_idx_bone_in_group);
-	ERR_FAIL_COND_MSG(group.size() == 0, "[GodotIK] grouped_by_position should be reflexive.");
+	ERR_FAIL_COND_MSG(group.is_empty(), "[GodotIK] grouped_by_position should be reflexive.");
 	for (int i = 0; i < group.size(); i++) {
 		positions.write[group[i]] = p_pos_bone;
 	}
@@ -168,9 +168,12 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 		while (work_idx != chain.closest_parent_in_chain) {
 			list_to_closest_parent.push_back(work_idx);
 			work_idx = skeleton->get_bone_parent(work_idx);
-			ERR_FAIL_COND_MSG(work_idx == -1, "[GodotIK] Invalid hierarchy: closest_parent_in_chain not actually reachable from root_idx.");
+			ERR_FAIL_COND_MSG(work_idx == -1,
+					"[GodotIK] Invalid hierarchy: closest_parent_in_chain not actually reachable from root_idx.");
 		}
-		ERR_FAIL_INDEX_MSG(0, list_to_closest_parent.size(), String("[GodotIK] Panic: Dependency propagation from invalid state. Please open an issue!") + (list_to_closest_parent.size()));
+		ERR_FAIL_INDEX_MSG(0, list_to_closest_parent.size(),
+				String("[GodotIK] Panic: Dependency propagation from invalid state. Please open an issue!") +
+						list_to_closest_parent.size());
 
 		Vector<int> list_from_ancestor = list_to_closest_parent;
 		list_from_ancestor.reverse();
@@ -186,10 +189,11 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 
 			Vector3 rest_dir = rest_ancestor.origin.direction_to(rest_ancestor_child.origin);
 			Vector3 cur_dir = positions[idx_ancestor_bone].direction_to(positions[child_idx_of_ancestor_bone]);
-			ERR_FAIL_COND_MSG(rest_dir.length() == 0 || cur_dir.length() == 0, "[GodotIK] Can't propergate transforms with zero length base bone. Please open an issue.");
+			ERR_FAIL_COND_MSG(rest_dir.length() == 0 || cur_dir.length() == 0,
+					"[GodotIK] Can't propergate transforms with zero length base bone. Please open an issue.");
 
 			// This simulates the actual end transform and propagates it through the chain.
-			// Same as in final apply_positions post-pass. Note: Might not work if deprecated use_global_poles = true.
+			// Same as in final post_pass. Note: Might not work if deprecated use_global_poles = true.
 			Quaternion adjustment = Quaternion(rest_dir, cur_dir);
 			Basis new_rotation = adjustment * rest_ancestor.basis;
 			new_ancestor_transform = Transform3D(new_rotation, positions[idx_ancestor_bone]);
@@ -198,10 +202,18 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 			int idx_parent = skeleton->get_bone_parent(idx_ancestor_bone);
 			ERR_FAIL_INDEX(idx_parent, initial_transforms.size());
 			Vector3 basis_scale = initial_transforms[idx_parent].basis.get_scale();
-			Transform3D parent_transform = Transform3D(Quaternion(Vector3(0, 1, 0), positions[idx_parent].direction_to(positions[idx_ancestor_bone])), positions[idx_parent]);
+
+			Basis parent_basis = initial_transforms[idx_parent].basis;
+			Vector3 rest_dir = initial_transforms[idx_parent].origin.direction_to(initial_transforms[idx_ancestor_bone].origin);
+			Vector3 current_dir = positions[idx_parent].direction_to(positions[idx_ancestor_bone]);
+
+			Quaternion adjustment = Quaternion(rest_dir, current_dir);
+			Transform3D parent_transform = Transform3D(adjustment * rest_ancestor.basis, positions[idx_ancestor_bone]);
+
 			new_ancestor_transform = Transform3D(initial_transforms[idx_ancestor_bone].get_basis(), positions[idx_ancestor_bone]);
 
 			Basis new_basis = get_effector_target_global_basis(chain.effector, skeleton, new_ancestor_transform, parent_transform);
+			new_basis = parent_transform.basis.inverse() * new_basis * parent_transform.basis;
 			new_ancestor_transform.basis = new_basis;
 		}
 
@@ -219,7 +231,7 @@ void GodotIK::solve_backward() {
 	// Chains are sorted by shallowest bone; iterate in reverse for backward pass
 	for (int idx_chain = chains.size() - 1; idx_chain >= 0; idx_chain--) {
 		IKChain &chain = chains.write[idx_chain];
-		if (chain.size() == 0 || chain.effector->get_influence() == 0.) {
+		if (chain.is_empty() || chain.effector->get_influence() == 0.) {
 			continue;
 		}
 		if (!chain.effector->is_active()) {
@@ -302,20 +314,11 @@ void GodotIK::post_pass() {
 		int parent_idx = skeleton->get_bone_parent(bone_idx);
 		parent_idx = (parent_idx < 0) ? identity_idx : parent_idx;
 
-		if (bone_to_effector_map.has(parent_idx)) {
-			continue;
-		}
-
-		if (bone_to_effector_map.has(bone_idx)) {
-			apply_effector_rotation(bone_to_effector_map[bone_idx], transforms, skeleton);
-		}
-
 		// If neither this bone nor its parent needs processing, skip it.
 		if (!needs_processing[bone_idx] && !needs_processing[parent_idx]) {
 			continue;
 		}
 
-		// Only apply rotation correction once to each parent_idx. All children will share the same position.
 		// We greedily process the first child->parent relation only.
 		if (rotation_processed[parent_idx]) {
 			continue;
@@ -392,6 +395,11 @@ void GodotIK::post_pass() {
 
 		// Ensure the identity index is kept at identity.
 		transforms.write[identity_idx] = identity_transform;
+
+		if (bone_to_effector_map.has(bone_idx)) {
+			apply_effector_rotation(bone_to_effector_map[bone_idx], transforms, skeleton);
+			rotation_processed.write[bone_idx] = true;
+		}
 	}
 
 	// ------ Apply previously calculated global rotations in local space -------
@@ -519,10 +527,10 @@ void GodotIK::initialize_if_dirty() {
 	{ // Sort chains by depth of shallowest bone.
 		struct DepthComparator {
 			bool operator()(const IKChain &a, const IKChain &b) const {
-				if (a.bones.size() == 0) {
+				if (a.is_empty()) {
 					return true;
 				}
-				if (b.bones.size() == 0) {
+				if (b.is_empty()) {
 					return false;
 				}
 				return a.bones[a.bones.size() - 1] < b.bones[b.bones.size() - 1];
@@ -537,7 +545,7 @@ void GodotIK::initialize_if_dirty() {
 		bone_to_chain_map.reserve(skeleton->get_bone_count());
 		for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
 			const IKChain &chain = chains[idx_chain];
-			if (chain.effector->get_bone_idx() == 0 || chain.size() == 0) {
+			if (chain.effector->get_bone_idx() == 0 || chain.is_empty()) {
 				continue;
 			}
 			for (int idx_in_chain = 0; idx_in_chain < chain.size(); ++idx_in_chain) {
@@ -552,7 +560,7 @@ void GodotIK::initialize_if_dirty() {
 
 	// assign closest_parent in chain
 	for (IKChain &chain : chains) {
-		if (chain.size() == 0) {
+		if (chain.is_empty()) {
 			continue;
 		}
 		int root_idx = chain.bones[chain.size() - 1];
@@ -597,6 +605,32 @@ void GodotIK::initialize_if_dirty() {
 		initialize_connections(ext);
 	}
 	identity_idx = skeleton->get_bone_count();
+
+	primary_child_list.resize(identity_idx);
+	primary_child_list.fill(-1);
+
+	for (int i = 0; i < identity_idx; i++) {
+		PackedInt32Array children = skeleton->get_bone_children(i);
+		if (children.is_empty()) {
+			continue;
+		}
+        Transform3D global_transform_bone = skeleton->get_bone_global_pose(i);
+		Vector3 dir_transform = skeleton->get_bone_global_pose(i).basis[1].normalized();
+		float max_dot = -1.0;
+        
+		for (int child : children) {
+            Transform3D global_transform_child = skeleton->get_bone_global_pose(child);
+			Vector3 dir_child = global_transform_bone.origin.direction_to(global_transform_child.origin);
+			if (dir_child.length_squared() < CMP_EPSILON) {
+				continue;
+			}
+			float new_dot = dir_transform.dot(dir_child.normalized());
+			if (new_dot > max_dot) {
+				max_dot = new_dot;
+				primary_child_list.write[i] = child;
+			}
+		}
+	}
 
 	dirty = false;
 }
@@ -972,4 +1006,45 @@ void GodotIK::apply_effector_rotation(const GodotIKEffector *effector, Vector<Tr
 	}
 
 	bone_transform.basis = bone_transform.basis.slerp(get_effector_target_global_basis(effector, skeleton, bone_transform, parent_transform), effector->get_influence());
+}
+
+Transform3D GodotIK::get_working_global_transform(
+	int bone_idx,
+	const Skeleton3D *skeleton,
+	const Vector<Vector3> &positions,
+	const Vector<Transform3D> &initial_transforms,
+	HashMap<int, Transform3D> &cache) const {
+
+	if (cache.has(bone_idx)) {
+		return cache[bone_idx];
+	}
+
+	Vector3 my_pos = positions[bone_idx];
+	Basis basis = initial_transforms[bone_idx].basis; // fallback basis
+	int primary_child = -1;
+
+	if (bone_idx < primary_child_list.size()) {
+		primary_child = primary_child_list[bone_idx];
+	}
+
+	if (primary_child != -1) {
+		Vector3 rest_dir = initial_transforms[bone_idx].origin.direction_to(initial_transforms[primary_child].origin);
+		Vector3 cur_dir = my_pos.direction_to(positions[primary_child]);
+
+		if (rest_dir.length_squared() > CMP_EPSILON && cur_dir.length_squared() > CMP_EPSILON) {
+			Quaternion delta = Quaternion(rest_dir.normalized(), cur_dir.normalized());
+			basis = delta * basis;
+		}
+	}
+
+	Transform3D result(basis, my_pos);
+
+	int parent_idx = skeleton->get_bone_parent(bone_idx);
+	if (parent_idx >= 0) {
+		Transform3D parent_transform = get_working_global_transform(parent_idx, skeleton, positions, initial_transforms, cache);
+		result = parent_transform.affine_inverse() * result; // Convert to local space
+	}
+
+	cache[bone_idx] = result;
+	return result;
 }

@@ -33,6 +33,9 @@ private:
 		inline int size() const {
 			return bones.size();
 		}
+		inline bool is_empty() const {
+			return size() == 0;
+		}
 	};
 
 public:
@@ -82,6 +85,7 @@ private:
 	Vector<bool> needs_processing;
 	Vector<Transform3D> initial_transforms;
 	Vector<Vector3> positions;
+	Vector<int> primary_child_list;
 	Vector<GodotIKEffector *> effectors;
 	StringName performance_monitor_name;
 	/** identity_idx is used as an extra element (at index bone_count) to represent a "null" or identity transform.
@@ -141,6 +145,12 @@ private:
 			const Transform3D &effector_global_transform,
 			const Transform3D &parent_global_transform) const;
 	void apply_effector_rotation(const GodotIKEffector *effector, Vector<Transform3D> &transforms, const Skeleton3D *skeleton);
+	Transform3D get_working_global_transform(
+			int bone_idx,
+			const Skeleton3D *skeleton,
+			const Vector<Vector3> &positions,
+			const Vector<Transform3D> &initial_transforms,
+			HashMap<int, Transform3D> &cache) const;
 }; // ! class GodotIK
 
 } // namespace godot
