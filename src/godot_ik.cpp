@@ -971,5 +971,5 @@ void GodotIK::apply_effector_rotation(const GodotIKEffector *effector, Vector<Tr
 		parent_transform = transforms[parent_idx];
 	}
 
-	bone_transform.basis = get_effector_target_global_basis(effector, skeleton, bone_transform, parent_transform);
+	bone_transform.basis = bone_transform.basis.slerp(get_effector_target_global_basis(effector, skeleton, bone_transform, parent_transform), effector->get_influence());
 }
