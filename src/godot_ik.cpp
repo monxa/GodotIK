@@ -1,9 +1,6 @@
 #include "godot_ik.h"
-#include "godot_cpp/variant/quaternion.hpp"
-#include "godot_cpp/variant/string.hpp"
-#include "godot_cpp/variant/transform2d.hpp"
-#include "godot_ik_effector.h"
 
+#include <godot_ik_effector.h>
 #include <godot_cpp/classes/performance.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -16,6 +13,9 @@
 #include <godot_cpp/templates/pair.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/quaternion.hpp>
+#include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/transform2d.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -168,7 +168,10 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 		int idx_ancestor_bone = chain.closest_parent_in_chain;
 		int child_idx_of_ancestor_bone = chain.pivot_child_in_ancestor;
 
+		ERR_FAIL_INDEX(chain.closest_parent_in_chain, initial_transforms.size());
 		Transform3D rest_ancestor = initial_transforms[chain.closest_parent_in_chain];
+		
+		ERR_FAIL_INDEX_EDMSG(child_idx_of_ancestor_bone, initial_transforms.size(), chain.effector->get_name());
 		Transform3D rest_ancestor_child = initial_transforms[child_idx_of_ancestor_bone];
 
 		Vector3 rest_dir = rest_ancestor.origin.direction_to(rest_ancestor_child.origin);
@@ -564,6 +567,9 @@ void GodotIK::initialize_if_dirty() {
 		bone_to_chain_map.reserve(skeleton->get_bone_count());
 		for (int idx_chain = 0; idx_chain < chains.size(); idx_chain++) {
 			const IKChain &chain = chains[idx_chain];
+			if (chain.effector->get_bone_idx() == 0 || chain.bones.size() == 0){
+				continue;
+			}
 			for (int idx_in_chain = 0; idx_in_chain < chain.bones.size(); ++idx_in_chain) {
 				int bone_idx = chain.bones[idx_in_chain];
 				if (bone_to_chain_map.has(bone_idx)) {
@@ -587,7 +593,11 @@ void GodotIK::initialize_if_dirty() {
 		chain.closest_parent_in_chain = ancestor_idx;
 		if (ancestor_idx != -1) {
 			Pair placemnt_pair = bone_to_chain_map.get(ancestor_idx);
-			ERR_FAIL_COND_MSG(placemnt_pair.second <= 0, "[GodotIK] Effectors inbetween chains not supported. Please open an issue.");
+			if (placemnt_pair.second <= 0){
+				chain.closest_parent_in_chain = -1;
+				WARN_PRINT("[GodotIK] Effectors inbetween chains not supported. Please open an issue.");
+				continue;
+			}
 			chain.pivot_child_in_ancestor = chains[placemnt_pair.first].bones[placemnt_pair.second - 1];
 		}
 	}
@@ -607,6 +617,7 @@ void GodotIK::initialize_if_dirty() {
 			}
 		}
 	}
+	
 	initialize_connections(this);
 	for (GodotIKRoot *ext : external_roots) {
 		initialize_connections(ext);
@@ -728,7 +739,9 @@ void GodotIK::initialize_chains() {
 	for (GodotIKEffector *effector : effectors) {
 		IKChain new_chain;
 		new_chain.effector = effector;
-
+		if (skeleton->get_bone_parent(effector->get_bone_idx()) == -1){
+			continue; // Don't build chains from root up.
+		}
 		int bone_idx = effector->get_bone_idx();
 
 		for (int chain_step = 0; chain_step < effector->get_chain_length() && bone_idx >= 0; chain_step++) {
