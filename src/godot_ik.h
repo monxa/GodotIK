@@ -140,6 +140,7 @@ private:
 			const Skeleton3D *skeleton,
 			const Transform3D &effector_global_transform,
 			const Transform3D &parent_global_transform) const;
+	void apply_effector_rotation(const GodotIKEffector *effector, Vector<Transform3D> &transforms, const Skeleton3D *skeleton);
 }; // ! class GodotIK
 
 } // namespace godot

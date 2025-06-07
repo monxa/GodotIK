@@ -173,7 +173,6 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 		ERR_FAIL_INDEX_MSG(0, list_to_closest_parent.size(), String("[GodotIK] Panic: Dependency propagation from invalid state. Please open an issue!") + (list_to_closest_parent.size()));
 
 		Transform3D delta_transform;
-
 		ERR_FAIL_INDEX(idx_ancestor_bone, initial_transforms.size());
 		Transform3D rest_ancestor = initial_transforms[idx_ancestor_bone];
 
@@ -283,6 +282,12 @@ void GodotIK::post_pass() {
 	}
 	Vector<Transform3D> transforms = initial_transforms.duplicate();
 
+	HashMap<int, GodotIKEffector *> bone_to_effector_map;
+	bone_to_effector_map.reserve(chains.size());
+	for (const IKChain &chain : chains) {
+		bone_to_effector_map[chain.effector->get_bone_idx()] = chain.effector;
+	}
+
 	// -------- Apply Positions -----------
 	for (int bone_idx = 0; bone_idx < initial_transforms.size(); bone_idx++) {
 		transforms.write[bone_idx].origin = positions[bone_idx];
@@ -298,6 +303,14 @@ void GodotIK::post_pass() {
 		// Get parent's index; if none, use identity_idx.
 		int parent_idx = skeleton->get_bone_parent(bone_idx);
 		parent_idx = (parent_idx < 0) ? identity_idx : parent_idx;
+
+		if (bone_to_effector_map.has(parent_idx)) {
+			continue;
+		}
+
+		if (bone_to_effector_map.has(bone_idx)) {
+			apply_effector_rotation(bone_to_effector_map[bone_idx], transforms, skeleton);
+		}
 
 		// If neither this bone nor its parent needs processing, skip it.
 		if (!needs_processing[bone_idx] && !needs_processing[parent_idx]) {
@@ -395,37 +408,6 @@ void GodotIK::post_pass() {
 			local_transform = transforms[parent_idx].affine_inverse() * local_transform;
 		}
 		skeleton->set_bone_pose(bone_idx, local_transform);
-	}
-
-	// ----- Effector leaf behavior ---------
-	// TODO: Refactor this into the solving step. This needs to be done very early so that non-leaf effectors influence others correctly.
-	for (const IKChain &chain : chains) {
-		GodotIKEffector *effector = chain.effector;
-		if (effector == nullptr) {
-			continue;
-		}
-		if (effector->get_bone_idx() < 0 || effector->get_bone_idx() >= skeleton->get_bone_count()) {
-			continue;
-		}
-
-		GodotIKEffector::TransformMode transform_mode = effector->get_transform_mode();
-		if (transform_mode == GodotIKEffector::TransformMode::POSITION_ONLY) {
-			continue;
-		}
-		int bone_idx = effector->get_bone_idx();
-		int parent_idx = skeleton->get_bone_parent(effector->get_bone_idx());
-		Transform3D trans_bone = transforms[bone_idx];
-		Transform3D trans_skeleton = skeleton->get_global_transform();
-		Transform3D trans_effector = effector->get_global_transform();
-		Transform3D trans_parent;
-		if (parent_idx != -1) {
-			trans_parent = transforms[parent_idx];
-		}
-
-		Transform3D local_trans_bone = Transform3D(trans_parent.affine_inverse() * trans_bone);
-		Basis global_basis_bone = get_effector_target_global_basis(effector, skeleton, trans_effector, trans_parent);
-		local_trans_bone.basis = trans_parent.basis.inverse() * global_basis_bone;
-		skeleton->set_bone_pose(bone_idx, local_trans_bone);
 	}
 }
 
@@ -975,4 +957,21 @@ Basis GodotIK::get_effector_target_global_basis(
 			return Basis();
 		}
 	}
+}
+
+void GodotIK::apply_effector_rotation(const GodotIKEffector *effector, Vector<Transform3D> &transforms, const Skeleton3D *skeleton) {
+	int bone_idx = effector->get_bone_idx();
+	ERR_FAIL_INDEX(bone_idx, transforms.size());
+
+	int parent_idx = skeleton->get_bone_parent(bone_idx);
+
+	// In-place modification: this reference updates the vector directly (over-engineered, I am not sorry, sorry)
+	Transform3D &bone_transform = transforms.write[bone_idx];
+
+	Transform3D parent_transform;
+	if (parent_idx >= 0) {
+		parent_transform = transforms[parent_idx];
+	}
+
+	bone_transform.basis = get_effector_target_global_basis(effector, skeleton, bone_transform, parent_transform);
 }
