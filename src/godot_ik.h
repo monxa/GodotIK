@@ -134,7 +134,7 @@ private:
 	Vector<int> calculate_bone_depths(Skeleton3D *p_skeleton);
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
 	Vector<Node *> get_nested_children_dsf(Node *p_base) const;
-	float compute_constraint_step_influence(float total_influence, int iteration_count);
+	float compute_influence_in_step(float total_influence, int iteration_count);
 
 	Basis get_effector_target_global_basis(
 			const GodotIKEffector *effector,

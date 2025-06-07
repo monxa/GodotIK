@@ -152,6 +152,9 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 		if (chain.closest_parent_in_chain == -1) {
 			continue;
 		}
+		if (chain.effector->get_influence() == 0 || !chain.effector->is_active()){
+			continue;
+		}
 
 		ERR_FAIL_INDEX(0, chain.size());
 		int root_idx = chain.bones[chain.size() - 1];
@@ -189,11 +192,14 @@ void GodotIK::propagate_positions_from_chain_ancestors() {
 
 		Vector<int> list_from_ancestor = list_to_closest_parent;
 		list_from_ancestor.reverse();
+		
+		float influence = compute_influence_in_step(chain.effector->get_influence(), iteration_count);
+
 		for (int index : list_to_closest_parent) {
 			Transform3D rest_transform = initial_transforms[index];
 			Transform3D adjusted_transform = delta_transform * rest_transform;
 			delta_transform = adjusted_transform * rest_transform.inverse();
-			positions.write[index] = (adjusted_transform).origin;
+			positions.write[index] = positions[index].lerp(adjusted_transform.origin, influence);
 		}
 	}
 }
@@ -418,7 +424,7 @@ void GodotIK::apply_constraint(const IKChain &p_chain, int p_idx_in_chain, Godot
 		return;
 	}
 
-	float influence = compute_constraint_step_influence(p_chain.effector->get_influence(), iteration_count);
+	float influence = compute_influence_in_step(p_chain.effector->get_influence(), iteration_count);
 
 	int idx_bone = p_chain.bones[p_idx_in_chain];
 	int idx_child = -1;
@@ -834,7 +840,7 @@ Vector<Node *> GodotIK::get_nested_children_dsf(Node *base) const {
 }
 
 // Computes the per-iteration influence step to reach a total influence after N iterations
-float GodotIK::compute_constraint_step_influence(float total_influence, int iteration_count) {
+float GodotIK::compute_influence_in_step(float total_influence, int iteration_count) {
 	if (total_influence == 0 || total_influence == 1. || iteration_count == 0) {
 		return total_influence;
 	}
