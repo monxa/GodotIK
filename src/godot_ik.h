@@ -1,6 +1,7 @@
 #ifndef GODOT_IK_H
 #define GODOT_IK_H
 
+#include "godot_cpp/variant/basis.hpp"
 #include "godot_ik_constraint.h"
 #include "godot_ik_effector.h"
 #include "godot_ik_root.h"
@@ -13,6 +14,7 @@
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
+#include <godot_cpp/templates/local_vector.hpp>
 
 namespace godot {
 
@@ -28,13 +30,26 @@ private:
 		GodotIKEffector *effector;
 		Vector3 effector_position;
 		Vector<GodotIKConstraint *> constraints;
-		int closest_parent_in_chain = -1;
-		int pivot_child_in_ancestor = -1;
+		int32_t closest_parent_in_chain = -1;
+		int32_t pivot_child_in_ancestor = -1;
+		int32_t closest_anchestor_chain_idx;
+
 		inline int size() const {
 			return bones.size();
 		}
 		inline bool is_empty() const {
 			return size() == 0;
+		}
+	};
+	struct BoneCache {
+		Basis basis;
+		int16_t iteration = -1;
+		int16_t child_index;
+		void invalidate(){
+			iteration = -1;
+		}
+		bool is_dirty() const {
+			return iteration == -1;
 		}
 	};
 
@@ -80,7 +95,9 @@ private:
 	// Bone length relative to parent. Root has no bone length.
 	Vector<float> bone_lengths;
 	HashMap<int, Vector<int>> grouped_by_position;
-	Vector<int> indices_by_depth;
+	
+	// Breath (shallowest bone) first THEN in chain first.
+	Vector<int> indices_by_process_order;
 
 	Vector<bool> needs_processing;
 	Vector<Transform3D> initial_transforms;
@@ -100,6 +117,8 @@ private:
 
 	float time_iteration = 0.;
 	Vector<IKChain> chains;
+	TightLocalVector<BoneCache> bone_caches;
+	TightLocalVector<bool> dirty_bones;
 	Callable callable_deinitialize;
 
 	// update ------
@@ -136,21 +155,29 @@ private:
 
 	Vector<int> calculate_bone_depths(Skeleton3D *p_skeleton);
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
-	Vector<Node *> get_nested_children_dsf(Node *p_base) const;
-	float compute_influence_in_step(float total_influence, int iteration_count);
+	Vector<Node *> get_nested_nodes(Node *p_base) const;
+	float compute_influence_in_step(float p_total_influence, int p_iteration_count);
 
 	Basis get_effector_target_global_basis(
-			const GodotIKEffector *effector,
-			const Skeleton3D *skeleton,
-			const Transform3D &effector_global_transform,
-			const Transform3D &parent_global_transform) const;
+			const GodotIKEffector *p_effector,
+			const Skeleton3D *p_skeleton,
+			const Vector3 basis_scale,
+			const Transform3D &p_parent_global_transform) const;
 	void apply_effector_rotation(const GodotIKEffector *effector, Vector<Transform3D> &transforms, const Skeleton3D *skeleton);
-	Transform3D get_working_global_transform(
-			int bone_idx,
-			const Skeleton3D *skeleton,
-			const Vector<Vector3> &positions,
-			const Vector<Transform3D> &initial_transforms,
-			HashMap<int, Transform3D> &cache) const;
+	Basis get_working_global_basis(
+			int p_bone_idx,
+			int p_child_idx,
+			const Skeleton3D *p_skeleton,
+			const Vector<Vector3> &p_positions,
+			const Vector<Transform3D> &p_initial_transforms
+		);
+	Basis get_working_global_basis_unsafe(
+		int p_bone_idx,
+		int p_child_idx,
+		const Skeleton3D *p_skeleton,
+		const Vector<Vector3> &p_positions,
+		const Vector<Transform3D> &p_initial_transforms
+	);
 }; // ! class GodotIK
 
 } // namespace godot
