@@ -1029,15 +1029,15 @@ Basis GodotIK::get_working_global_basis_unsafe(
 		const Vector<Transform3D> &p_initial_transforms) {
 	BoneCache &cache = bone_caches[p_bone_idx];
 	
-	// Caching logic:
+	// Caching logic: Caching is disabled. We need a virtual skeleton now.
 	//
 	// Post-pass: This is safe. All bone positions are finalized before this is used.
 	// During position propagation: This is acceptable *for now*; because multiple iterations approximate the correct result over time.
 	// Caveat: If iteration_count small, propagation (only complex setups) may be slightly off due to stale transforms.
 	// TODO: Carefully revisit this. Consider tree-walking for precise per-pass updates vs. caching tradeoff.
-	if (cache.iteration == current_iteration && cache.child_index == p_child_idx) {
-		return cache.basis;
-	}
+	// if (cache.iteration == current_iteration && cache.child_index == p_child_idx) {
+	// 	return cache.basis;
+	// }
 
 	int parent_idx = p_skeleton->get_bone_parent(p_bone_idx);
 
