@@ -30,9 +30,10 @@ private:
 		GodotIKEffector *effector;
 		Vector3 effector_position;
 		Vector<GodotIKConstraint *> constraints;
-		int32_t closest_parent_in_chain = -1;
-		int32_t pivot_child_in_ancestor = -1;
-		int32_t closest_anchestor_chain_idx;
+		int32_t ancestor_chain_bone_idx = -1;
+		int16_t ancestor_child_bone_index = -1;
+		bool ancestor_is_effector = false;
+		const IKChain * ancestor_chain = nullptr;
 
 		inline int size() const {
 			return bones.size();
