@@ -13,14 +13,14 @@ This project provides four classes:
   Parented by `GodotIK` in the SceneTree, these nodes position the bones, define the chain length, and rotate the affected bone according to their `transform_behavior` property.
   
 - **`GodotIKConstraint`**  
-  An abstract class that is parented by `GodotIKEffector`s. Four examples are provided as GDScript implementations: `PoleConstraint`, `StraightBoneConstraint`, `SmoothBoneConstraint`, `MaxRotationConstraint`.
+  An abstract class that is parented by `GodotIKEffector`s. Four examples are provided as GDScript implementations: `PoleBoneConstraint`, `StraightBoneConstraint`, `SmoothBoneConstraint`, `MaxRotationBoneConstraint`.
 
 - **`GodotIKRoot`**
   An alternative root node, under which effectors and constraints can be placed. Links into `GodotIK` through a `Nodepath` refernce.
 
 This is the best implementation I could come up with. It's stable - at least as stable as it gets with constraints.
 
-For further reference, check out the `doc_classes/` directory; it tells it all.
+For further reference, check out the In-Editor-Documentation: The `doc_classes/` directory; it tells it all.
 
 <sup>SceneTree example: Skeleton3D -> GodotIK -> [GodotIKEffectors] -> GodotIKConstraint</sup>
 
