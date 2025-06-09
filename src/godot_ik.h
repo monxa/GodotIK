@@ -1,6 +1,7 @@
 #ifndef GODOT_IK_H
 #define GODOT_IK_H
 
+#include "godot_cpp/variant/basis.hpp"
 #include "godot_ik_constraint.h"
 #include "godot_ik_effector.h"
 #include "godot_ik_root.h"
@@ -12,6 +13,8 @@
 #include <godot_cpp/templates/hash_map.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
+#include <godot_cpp/templates/local_vector.hpp>
 
 namespace godot {
 
@@ -27,8 +30,28 @@ private:
 		GodotIKEffector *effector;
 		Vector3 effector_position;
 		Vector<GodotIKConstraint *> constraints;
-		int closest_parent_in_chain = -1;
-		int pivot_child_in_ancestor = -1;
+		int32_t ancestor_chain_bone_idx = -1;
+		int16_t ancestor_child_bone_index = -1;
+		bool ancestor_is_effector = false;
+		const IKChain * ancestor_chain = nullptr;
+
+		inline int size() const {
+			return bones.size();
+		}
+		inline bool is_empty() const {
+			return size() == 0;
+		}
+	};
+	struct BoneCache {
+		Basis basis;
+		int16_t iteration = -1;
+		int16_t child_index;
+		void invalidate(){
+			iteration = -1;
+		}
+		bool is_dirty() const {
+			return iteration == -1;
+		}
 	};
 
 public:
@@ -73,13 +96,15 @@ private:
 	// Bone length relative to parent. Root has no bone length.
 	Vector<float> bone_lengths;
 	HashMap<int, Vector<int>> grouped_by_position;
-	Vector<int> indices_by_depth;
+	
+	// Breath (shallowest bone) first THEN in chain first.
+	Vector<int> indices_by_process_order;
 
 	Vector<bool> needs_processing;
 	Vector<Transform3D> initial_transforms;
 	Vector<Vector3> positions;
+	Vector<int> primary_child_list;
 	Vector<GodotIKEffector *> effectors;
-	Vector<Vector<GodotIKEffector *>> bone_effector_map;
 	StringName performance_monitor_name;
 	/** identity_idx is used as an extra element (at index bone_count) to represent a "null" or identity transform.
 	*** This extra element is initialized as follows:
@@ -93,13 +118,15 @@ private:
 
 	float time_iteration = 0.;
 	Vector<IKChain> chains;
+	TightLocalVector<BoneCache> bone_caches;
+	TightLocalVector<bool> dirty_bones;
 	Callable callable_deinitialize;
 
 	// update ------
 	void propagate_positions_from_chain_ancestors();
 	void solve_forward();
 	void solve_backward();
-	void apply_positions();
+	void post_pass();
 
 	// ! update --------
 
@@ -129,8 +156,29 @@ private:
 
 	Vector<int> calculate_bone_depths(Skeleton3D *p_skeleton);
 	bool compare_by_depth(int p_a, int p_b, const Vector<int> &p_depths);
-	Vector<Node *> get_nested_children_dsf(Node *p_base) const;
-	float compute_constraint_step_influence(float total_influence, int iteration_count);
+	Vector<Node *> get_nested_nodes(Node *p_base) const;
+	float compute_influence_in_step(float p_total_influence, int p_iteration_count);
+
+	Basis get_effector_target_global_basis(
+			const GodotIKEffector *p_effector,
+			const Skeleton3D *p_skeleton,
+			const Vector3 basis_scale,
+			const Transform3D &p_parent_global_transform) const;
+	void apply_effector_rotation(const GodotIKEffector *effector, Vector<Transform3D> &transforms, const Skeleton3D *skeleton);
+	Basis get_working_global_basis(
+			int p_bone_idx,
+			int p_child_idx,
+			const Skeleton3D *p_skeleton,
+			const Vector<Vector3> &p_positions,
+			const Vector<Transform3D> &p_initial_transforms
+		);
+	Basis get_working_global_basis_unsafe(
+		int p_bone_idx,
+		int p_child_idx,
+		const Skeleton3D *p_skeleton,
+		const Vector<Vector3> &p_positions,
+		const Vector<Transform3D> &p_initial_transforms
+	);
 }; // ! class GodotIK
 
 } // namespace godot

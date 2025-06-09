@@ -84,12 +84,14 @@ ConstructorInitializerAllOnOneLineOrOnePerLine: true
 #   - KJ_IF_MAYBE
 # IncludeBlocks:   Preserve
 IncludeCategories:
-  - Regex:           '".*"'
+  - Regex:           '^<godot_cpp/.*>'
     Priority:        1
-  - Regex:           '^<.*\.h>'
+  - Regex:           '".*"'
     Priority:        2
-  - Regex:           '^<.*'
+  - Regex:           '^<.*\.h>'
     Priority:        3
+  - Regex:           '^<.*'
+    Priority:        4
 # IncludeIsMainRegex: '(Test)?$'
 # IncludeIsMainSourceRegex: ''
 # IndentAccessModifiers: false

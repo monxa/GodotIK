@@ -1,4 +1,5 @@
 #include "godot_ik_root.h"
+#include "godot_cpp/variant/callable_method_pointer.hpp"
 #include "godot_ik.h"
 
 using namespace godot;
@@ -10,12 +11,16 @@ void GodotIKRoot::_notification(int p_notification) {
 		}
 		GodotIK *new_ik_controller = get_node<GodotIK>(ik_controller_path);
 		if (new_ik_controller) {
-			new_ik_controller->add_external_root(this);
+			if (!new_ik_controller->is_node_ready()) {
+				new_ik_controller->connect("ready", callable_mp(new_ik_controller, &GodotIK::add_external_root).bind(this));
+			} else {
+				new_ik_controller->add_external_root(this);
+			}
 		}
 		ik_controller = new_ik_controller;
 	}
-	if (p_notification == NOTIFICATION_EXIT_TREE){
-		if (ik_controller){
+	if (p_notification == NOTIFICATION_EXIT_TREE) {
+		if (ik_controller) {
 			ik_controller->remove_external_root(this);
 		}
 	}
